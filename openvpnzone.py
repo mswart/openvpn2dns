@@ -1,3 +1,14 @@
+import os.path
+from datetime import datetime
+import signal
+
+from twisted.names import dns
+from twisted.names.authority import FileAuthority
+
+from twisted.internet import inotify
+from twisted.python import filepath
+
+
 def extract_status_file_path(config_path):
     """ Extracts the path to the openvpn status file from a openvpn config.
 
@@ -57,38 +68,63 @@ def extract_zones_from_status_file(status_path):
         return clients
 
 
-def build_zone_from_clients(clients, name, **zone_opts):
-    """ Basic zone generation (uses only the client list),
-        additional data like SOA information must be passed
-        as keyword option """
-    from twisted.names import dns
-    name = name or '.'.join(clients.keys()[0].split('.')[1:])
-    zone = []
-    zone.append((name, dns.Record_SOA(**zone_opts)))
-    for client, address in clients.items():
-        zone.append((client, dns.Record_A(address)))
-    return zone
+class OpenVpnStatusAuthority(FileAuthority):
+    def __init__(self, status_file,  # This nameserver's name
+                 mname="ns1.example-domain.com",
+                 # Mailbox of individual who handles this
+                 rname="root.example-domain.com",
+                 # Unique serial identifying this SOA data
+                 serial=2003010601,
+                 # Time interval before zone should be refreshed
+                 refresh="1H",
+                 # Interval before failed refresh should be retried
+                 retry="1H",
+                 # Upper limit on time interval before expiry
+                 expire="1H",
+                 # Minimum TTL
+                 minimum="1H"
+                 ):
+        self.status_file = status_file
+        self.mname = mname
+        self.rname = rname
+        self.refresh = refresh
+        self.retry = retry
+        self.expire = expire
+        self.minimum = minimum
+        FileAuthority.__init__(self, status_file)
 
+        # watch for file changes:
+        signal.signal(signal.SIGUSR1, self.handle_signal)
+        notifier = inotify.INotify()
+        notifier.startReading()
+        notifier.watch(filepath.FilePath(status_file), callbacks=[self.notify])
 
-status_file = extract_status_file_path('server.conf')
+    def loadFile(self, status_file):
+        clients = extract_zones_from_status_file(status_file)
+        self.build_zone_from_clients(clients, status_file)
 
-zone = []
+    def build_zone_from_clients(self, clients, status_file):
+        """ Basic zone generation (uses only the client list),
+            additional data like SOA information must be passed
+            as keyword option """
+        name = '.'.join(clients.keys()[0].split('.')[1:])
+        self.records = {}
+        self.soa = (name, dns.Record_SOA(
+            mname=self.mname,
+            rname=self.rname,
+            serial=int(os.path.getmtime(status_file)),
+            refresh=self.refresh,
+            retry=self.retry,
+            expire=self.expire,
+            minimum=self.minimum,
+        ))
+        for client, address in clients.items():
+            self.records.setdefault(client.lower(), []).append(dns.Record_A(address))
 
-clients = extract_zones_from_status_file(status_file)
+    def handle_signal(self, a, b):
+        self.loadFile(self.status_file)
 
-zone = build_zone_from_clients(clients, name=None,
-                               # This nameserver's name
-                               mname="ns1.example-domain.com",
-                               # Mailbox of individual who handles this
-                               rname="root.example-domain.com",
-                               # Unique serial identifying this SOA data
-                               serial=2003010601,
-                               # Time interval before zone should be refreshed
-                               refresh="1H",
-                               # Interval before failed refresh should be retried
-                               retry="1H",
-                               # Upper limit on time interval before expiry
-                               expire="1H",
-                               # Minimum TTL
-                               minimum="1H"
-                               )
+    def notify(self, ignored, filepath, mask):
+        print('{} changed ({}), rereading zone data'.format(filepath,
+              ','.join(inotify.humanReadableMask(mask))))
+        self.loadFile(self.status_file)
