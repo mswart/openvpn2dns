@@ -1,11 +1,11 @@
 import os.path
-from datetime import datetime
 import signal
 
 from twisted.names import dns
 from twisted.names.authority import FileAuthority
-
+from twisted.names.client import Resolver
 from twisted.internet import inotify
+from twisted.internet import defer
 from twisted.python import filepath
 
 
@@ -107,9 +107,9 @@ class OpenVpnStatusAuthority(FileAuthority):
         """ Basic zone generation (uses only the client list),
             additional data like SOA information must be passed
             as keyword option """
-        name = '.'.join(clients.keys()[0].split('.')[1:])
+        self.name = '.'.join(clients.keys()[0].split('.')[1:])
         self.records = {}
-        self.soa = (name, dns.Record_SOA(
+        self.soa = (self.name, dns.Record_SOA(
             mname=self.mname,
             rname=self.rname,
             serial=int(os.path.getmtime(status_file)),
@@ -128,3 +128,35 @@ class OpenVpnStatusAuthority(FileAuthority):
         print('{} changed ({}), rereading zone data'.format(filepath,
               ','.join(inotify.humanReadableMask(mask))))
         self.loadFile(self.status_file)
+        r = NotifyResolver(servers=[(os.environ['SLAVE_SERVER'], 53)])
+
+        def test(message, *args):
+            print(message.__dict__)
+        r.sendNotify(self.name).addCallback(test)
+
+
+class NotifyResolver(Resolver):
+    def sendNotify(self, zone):
+        protocol = self._connectedProtocol()
+
+        id = protocol.pickID()
+
+        m = dns.Message(id, opCode=dns.OP_NOTIFY)
+        m.queries = [dns.Query(zone, dns.SOA, dns.IN)]
+
+        try:
+            protocol.writeMessage(m, self.servers[0])
+        except:
+            return defer.fail()
+
+        resultDeferred = defer.Deferred()
+        cancelCall = protocol.callLater(10, protocol._clearFailed, resultDeferred, id)
+        protocol.liveMessages[id] = (resultDeferred, cancelCall)
+
+        d = resultDeferred
+
+        def cbQueried(result):
+            protocol.transport.stopListening()
+            return result
+        d.addBoth(cbQueried)
+        return d
