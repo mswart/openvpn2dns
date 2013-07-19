@@ -1,20 +1,22 @@
 from twisted.application import internet, service
 from twisted.names import dns
 from twisted.names import server
-from openvpnzone import OpenVpnStatusAuthority, extract_status_file_path
+from openvpnzone import OpenVpnStatusAuthority
+from parser import ConfigParser
 
 
 def createOpenvpn2DnsService():
-    zones = [OpenVpnStatusAuthority(extract_status_file_path('server.conf'))]
-
-    f = server.DNSServerFactory(zones, None, None, 100)
-    p = dns.DNSDatagramProtocol(f)
-    f.noisy = 0
+    config = ConfigParser('openvpn2dns.cfg')
+    zones = [OpenVpnStatusAuthority(config)]
 
     m = service.MultiService()
-    for (klass, arg) in [(internet.TCPServer, f), (internet.UDPServer, p)]:
-        s = klass(53535, arg)
-        s.setServiceParent(m)
+    for listen in config.listen:
+        f = server.DNSServerFactory(zones, None, None, 100)
+        p = dns.DNSDatagramProtocol(f)
+        f.noisy = 0
+        for (klass, arg) in [(internet.TCPServer, f), (internet.UDPServer, p)]:
+            s = klass(listen[1], arg, interface=listen[0])
+            s.setServiceParent(m)
     return m
 
 application = service.Application("OpenVPN2DNS")

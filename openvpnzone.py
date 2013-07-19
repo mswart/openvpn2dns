@@ -69,35 +69,15 @@ def extract_zones_from_status_file(status_path):
 
 
 class OpenVpnStatusAuthority(FileAuthority):
-    def __init__(self, status_file,  # This nameserver's name
-                 mname="ns1.example-domain.com",
-                 # Mailbox of individual who handles this
-                 rname="root.example-domain.com",
-                 # Unique serial identifying this SOA data
-                 serial=2003010601,
-                 # Time interval before zone should be refreshed
-                 refresh="1H",
-                 # Interval before failed refresh should be retried
-                 retry="1H",
-                 # Upper limit on time interval before expiry
-                 expire="1H",
-                 # Minimum TTL
-                 minimum="1H"
-                 ):
-        self.status_file = status_file
-        self.mname = mname
-        self.rname = rname
-        self.refresh = refresh
-        self.retry = retry
-        self.expire = expire
-        self.minimum = minimum
-        FileAuthority.__init__(self, status_file)
+    def __init__(self, config):
+        self.config = config
+        FileAuthority.__init__(self, config.status_file)
 
         # watch for file changes:
         signal.signal(signal.SIGUSR1, self.handle_signal)
         notifier = inotify.INotify()
         notifier.startReading()
-        notifier.watch(filepath.FilePath(status_file), callbacks=[self.notify])
+        notifier.watch(filepath.FilePath(config.status_file), callbacks=[self.notify])
 
     def loadFile(self, status_file):
         clients = extract_zones_from_status_file(status_file)
@@ -110,29 +90,32 @@ class OpenVpnStatusAuthority(FileAuthority):
         self.name = '.'.join(clients.keys()[0].split('.')[1:])
         self.records = {}
         self.soa = (self.name, dns.Record_SOA(
-            mname=self.mname,
-            rname=self.rname,
+            mname=self.config.master_name,
+            rname=self.config.zone_admin,
             serial=int(os.path.getmtime(status_file)),
-            refresh=self.refresh,
-            retry=self.retry,
-            expire=self.expire,
-            minimum=self.minimum,
+            refresh=self.config.refresh,
+            retry=self.config.retry,
+            expire=self.config.expire,
+            minimum=self.config.minimum,
         ))
+        for name, record in self.config.records + [self.soa]:
+            self.records.setdefault(name, []).append(record)
         for client, address in clients.items():
             self.records.setdefault(client.lower(), []).append(dns.Record_A(address))
 
     def handle_signal(self, a, b):
-        self.loadFile(self.status_file)
+        self.loadFile(self.config.status_file)
 
     def notify(self, ignored, filepath, mask):
         print('{} changed ({}), rereading zone data'.format(filepath,
               ','.join(inotify.humanReadableMask(mask))))
-        self.loadFile(self.status_file)
-        r = NotifyResolver(servers=[(os.environ['SLAVE_SERVER'], 53)])
+        self.loadFile(self.config.status_file)
+        for server in self.config.notify:
+            r = NotifyResolver(servers=[server])
 
-        def test(message, *args):
-            print(message.__dict__)
-        r.sendNotify(self.name).addCallback(test)
+            def test(message, *args):
+                print(message.__dict__)
+            r.sendNotify(self.name).addCallback(test)
 
 
 class NotifyResolver(Resolver):
