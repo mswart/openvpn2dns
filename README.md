@@ -97,7 +97,7 @@ Uses the twisted ``twistd`` executable to launch openvpn2dns:
 twistd -y launch.py
 ```
 
-At the moment the configuration file name is hard-coded to ``openvpn2dns.cfg`` (#1).
+At the moment the configuration file name is hard-coded to ``openvpn2dns.cfg`` #1.
 
 ``twistd`` as additional option to specify to user id or the log destination. Use ``twistd --help`` for all option.
 
@@ -113,10 +113,10 @@ Limitations
 
 openvpn2dns has some known limitations:
 
-- Hard coded configuration file name (#1)
-- Only one status file supported (#2)
-- Support IPv6 address for OpenVPN clients (#3)
-- Missing reverse DNs zone (#4)
+- Hard coded configuration file name #1
+- Only one status file supported #2
+- Support IPv6 address for OpenVPN clients #3
+- Missing reverse DNs zone #4
 
 I recommend using openvpn2dns only as hidden DNS server and explicit DNS servers (like bind ...) for the clients. openvpn2dns supports zone transfers and notify.
 
