@@ -60,7 +60,7 @@ def extract_zones_from_status_file(status_path):
                 clients[status_line.split(',')[0]] = None
             if mode == 'routes':
                 address, client = status_line.split(',')[0:2]
-                if '/' in address:
+                if '/' in address or address[-1].isalpha():
                     continue
                 if client not in clients:
                     raise ValueError('Error in status file')

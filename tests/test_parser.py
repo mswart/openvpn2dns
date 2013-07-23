@@ -24,3 +24,8 @@ def test_multiple_client_on_server():
 def test_subnet_for_client():
     assert extract_zones_from_status_file('tests/samples/subnet.ovpn-status-v1') \
         == {'one.vpn.example.org': '198.51.100.8'}
+
+
+def test_cached_route():
+    assert extract_zones_from_status_file('tests/samples/cached-route.ovpn-status-v1') \
+        == {'one.vpn.example.org': '198.51.100.8'}
