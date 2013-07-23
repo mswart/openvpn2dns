@@ -1,6 +1,8 @@
 OpenVPN 2 DNS
 =============
 
+[![Build Status](https://travis-ci.org/mswart/openvpn2dns.png?branch=master)](https://travis-ci.org/mswart/openvpn2dns)
+
 A pure python DNS server serving the content of OpenVPN status files. It parses
 the status files of the OpenVPN server to extract the connected clients and
 their IP addresses. From theses data OpenVPN2DNS creates DNS zones and serving
