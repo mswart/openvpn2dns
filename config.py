@@ -87,7 +87,7 @@ class ConfigParser(object):
                     options = []
                     continue
                 if section is None:
-                    warnings.warn('Option without sections: {}'.format(line),
+                    warnings.warn('Option without sections: {0}'.format(line),
                                   UnusedOptionWarning, stacklevel=2)
                     continue
                 option, value = line.split('=', 1)
@@ -116,7 +116,7 @@ class ConfigParser(object):
             elif option == 'instance':
                 self.parse_instance(value)
             else:
-                warnings.warn('Unknown option {} in options section'
+                warnings.warn('Unknown option {0} in options section'
                               .format(option), UnusedOptionWarning,
                               stacklevel=2)
 
@@ -132,11 +132,11 @@ class ConfigParser(object):
 
             :param str name: name for this instance (used as zone name)"""
         if name in self.instances:
-            raise InstanceRedifinitionError('Instance {} already defined'
+            raise InstanceRedifinitionError('Instance {0} already defined'
                                             .format(name))
         instance = OpenVpnInstance(name)
         if name not in self.data:
-            raise MissingSectionError('section for instance {}'.format(name))
+            raise MissingSectionError('section for instance {0}'.format(name))
         for option, value in self.data[name]:
             # status file:
             if option == 'status_file':
@@ -149,18 +149,18 @@ class ConfigParser(object):
                 if option == 'rname':
                     value = value.replace('@', '.', 1)
                 if getattr(instance, option) is not None:
-                    warnings.warn('Overwrite SOA value {}'.format(option),
+                    warnings.warn('Overwrite SOA value {0}'.format(option),
                                   OptionRedifinitionWarning, stacklevel=2)
                 setattr(instance, option, value)
             # additional entries:
             elif option == 'add_entries':
                 if value not in self.data:
-                    raise MissingSectionError('Referencing unknown section {}'
+                    raise MissingSectionError('Referencing unknown section {0}'
                                               .format(value))
                 instance.records += self.parse_entry_section(self.data[value],
                                                              name=name)
             else:
-                warnings.warn('Unknown option {} in section {}'.format(option,
+                warnings.warn('Unknown option {0} in section {1}'.format(option,
                               name), UnusedOptionWarning, stacklevel=2)
         self.instances[name] = instance
         return instance

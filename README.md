@@ -56,7 +56,7 @@ The following options are optional:
 - **add_entries**: name of one entry section thats records should be added to the zone of this instance.
 
 
-### entry section - additional (fixed) DNS entries
+### entry section - additional (static) DNS entries
 
 This section contains entries that should be added to the dynamic entries from the status file. This should be administrative entries like name servers (NS) or entries for the VPN server.
 

@@ -136,7 +136,7 @@ class OpenVpnAuthorityHandler(list):
         self.loadFile(self.config.status_file)
 
     def notify(self, ignored, filepath, mask):
-        print('{} changed ({}), rereading zone data'.format(filepath,
+        print('{0} changed ({1}), rereading zone data'.format(filepath,
               ','.join(inotify.humanReadableMask(mask))))
         self.loadFile(self.config.status_file)
         for server in self.config.notify:
