@@ -10,7 +10,7 @@ def createOpenvpn2DnsService():
     zones = OpenVpnAuthorityHandler(config)
 
     m = service.MultiService()
-    for listen in config.listen:
+    for listen in config.listen_addresses:
         f = server.DNSServerFactory(zones, None, None, 100)
         p = dns.DNSDatagramProtocol(f)
         f.noisy = 0

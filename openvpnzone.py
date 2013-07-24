@@ -92,40 +92,45 @@ class OpenVpnAuthorityHandler(list):
     def __init__(self, config):
         self.config = config
         # authority for the data itself:
-        self.authority = InMemoryAuthority()
-        self.append(self.authority)
+        self.authorities = {}
+        for instance in self.config.instances:
+            self.authorities[instance] = InMemoryAuthority()
+        self.append(self.authorities[instance])
         # load data:
-        self.loadFile(self.config.status_file)
+        for instance in self.config.instances:
+            self.loadInstance(self.config.instances[instance])
         # watch for file changes:
         signal.signal(signal.SIGUSR1, self.handle_signal)
         notifier = inotify.INotify()
         notifier.startReading()
-        notifier.watch(filepath.FilePath(config.status_file), callbacks=[self.notify])
+        for instance in self.config.instances.values():
+            notifier.watch(filepath.FilePath(instance.status_file),
+                           callbacks=[self.notify])
 
-    def loadFile(self, status_file):
-        clients = extract_zones_from_status_file(status_file)
-        self.build_zone_from_clients(clients, status_file)
+    def loadInstance(self, instance):
+        clients = extract_zones_from_status_file(instance.status_file)
+        self.build_zone_from_clients(instance, clients)
 
-    def build_zone_from_clients(self, clients, status_file):
+    def build_zone_from_clients(self, instance, clients):
         """ Basic zone generation (uses only the client list),
             additional data like SOA information must be passed
             as keyword option """
-        self.name = '.'.join(clients.keys()[0].split('.')[1:])
+        name = '.'.join(clients.keys()[0].split('.')[1:])
         records = {}
-        soa = (self.name, dns.Record_SOA(
-            mname=self.config.master_name,
-            rname=self.config.zone_admin,
-            serial=int(os.path.getmtime(status_file)),
-            refresh=self.config.refresh,
-            retry=self.config.retry,
-            expire=self.config.expire,
-            minimum=self.config.minimum,
+        soa = (name, dns.Record_SOA(
+            mname=instance.mname,
+            rname=instance.rname,
+            serial=int(os.path.getmtime(instance.status_file)),
+            refresh=instance.refresh,
+            retry=instance.retry,
+            expire=instance.expire,
+            minimum=instance.minimum,
         ))
-        for name, record in self.config.records + [soa]:
+        for name, record in instance.records + [soa]:
             records.setdefault(name, []).append(record)
         for client, address in clients.items():
             records.setdefault(client.lower(), []).append(dns.Record_A(address))
-        self.authority.setData(soa, records)
+        self.authorities[instance.name].setData(soa, records)
 
     def handle_signal(self, a, b):
         self.loadFile(self.config.status_file)

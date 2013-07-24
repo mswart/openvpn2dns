@@ -1,4 +1,49 @@
+from __future__ import print_function
+
+import warnings
+
 from twisted.names import dns
+
+
+class ConfigurationError(Exception):
+    pass
+
+
+class MissingSectionError(ConfigurationError):
+    pass
+
+
+class InstanceRedifinitionError(ConfigurationError):
+    pass
+
+
+class ConfigurationWarning(UserWarning):
+    pass
+
+
+class UnusedOptionWarning(ConfigurationWarning):
+    pass
+
+
+class OptionRedifinitionWarning(ConfigurationWarning):
+    pass
+
+
+SOA = ['rname', 'mname', 'refresh', 'retry', 'expire', 'minimum']
+
+
+class OpenVpnInstance(object):
+    def __init__(self, name):
+        self.name = name
+        self.status_file = None
+        self.notify = []
+        self.rname = None
+        self.mname = None
+        self.refresh = None
+        self.retry = None
+        self.expire = None
+        self.minimum = None
+        self.records = []
 
 
 class ConfigParser(object):
@@ -8,17 +53,8 @@ class ConfigParser(object):
 
         :param str filename: file path to configuration file"""
     def __init__(self, filename=None):
-        self.status_file = None
-        self.listen = []
-        self.notify = []
-        self.name = None
-        self.zone_admin = None
-        self.master_name = None
-        self.refresh = None
-        self.retry = None
-        self.expire = None
-        self.minimum = None
-        self.records = []
+        self.listen_addresses = []
+        self.instances = {}
         if filename:
             self.read_file(filename)
 
@@ -51,7 +87,9 @@ class ConfigParser(object):
                     options = []
                     continue
                 if section is None:
-                    raise ValueError('Options without sections')
+                    warnings.warn('Option without sections: {}'.format(line),
+                                  UnusedOptionWarning, stacklevel=2)
+                    continue
                 option, value = line.split('=', 1)
                 options.append((option.strip(), value.strip()))
             if section:  # save old section data
@@ -59,57 +97,85 @@ class ConfigParser(object):
         return sections
 
     def read_file(self, file_name):
-        data = self.read_data(file_name)
-        for section in ('options', 'SOA', 'entries'):
-            for option, value in data[section]:
-                if section == 'entries':
-                    self.parse_entry(option, value)
-                else:
-                    method = getattr(self, section + '__' + option, None)
-                    if method is None:
-                        print('Warning: unknown option {} in section {}'.format(
-                            option, section))
-                    else:
-                        method(value)
+        """ Read and parse the configuration file"""
+        self.parse_data(self.read_data(file_name))
 
-    def options__status_file(self, file_name):
-        self.status_file = file_name
+    def parse_data(self, data):
+        """ Parse configuration data
 
-    def options__listen(self, listen):
+            :param dict data: data extracted from :meth:`read_data`
+            :raises ConfigurationError: missing information"""
+        # store data for other methods:
+        self.data = data
+        # handle main options:
+        if 'options' not in data:
+            raise MissingSectionError('Missing options section')
+        for option, value in data['options']:
+            if option == 'listen':
+                self.add_listen_address(value)
+            elif option == 'instance':
+                self.parse_instance(value)
+            else:
+                warnings.warn('Unknown option {} in options section'
+                              .format(option), UnusedOptionWarning,
+                              stacklevel=2)
+
+    def add_listen_address(self, listen):
+        """ Add a listen information
+
+            :param str listen: listen information (name, ip, port)"""
         address, port = listen.split(':', 1)
-        self.listen.append((address, int(port)))
+        self.listen_addresses.append((address, int(port)))
 
-    def options__notify(self, host):
-        self.notify.append((host, 53))
+    def parse_instance(self, name):
+        """ register one openvpn status instance
 
-    def options__name(self, name):
-        self.name = name
+            :param str name: name for this instance (used as zone name)"""
+        if name in self.instances:
+            raise InstanceRedifinitionError('Instance {} already defined'
+                                            .format(name))
+        instance = OpenVpnInstance(name)
+        if name not in self.data:
+            raise MissingSectionError('section for instance {}'.format(name))
+        for option, value in self.data[name]:
+            # status file:
+            if option == 'status_file':
+                instance.status_file = value
+            # slave name server notifies:
+            elif option == 'notify':
+                instance.notify.append((value, 53))
+            # SOA entries:
+            elif option in SOA:
+                if option == 'rname':
+                    value = value.replace('@', '.', 1)
+                if getattr(instance, option) is not None:
+                    warnings.warn('Overwrite SOA value {}'.format(option),
+                                  OptionRedifinitionWarning, stacklevel=2)
+                setattr(instance, option, value)
+            # additional entries:
+            elif option == 'add_entries':
+                if value not in self.data:
+                    raise MissingSectionError('Referencing unknown section {}'
+                                              .format(value))
+                instance.records += self.parse_entry_section(self.data[value],
+                                                             name=name)
+            else:
+                warnings.warn('Unknown option {} in section {}'.format(option,
+                              name), UnusedOptionWarning, stacklevel=2)
+        self.instances[name] = instance
+        return instance
 
-    def SOA__zone_admin(self, admin):
-        self.zone_admin = admin.replace('@', '.')
-
-    def SOA__master_name(self, name):
-        self.master_name = name
-
-    def SOA__refresh(self, refresh):
-        self.refresh = refresh
-
-    def SOA__retry(self, retry):
-        self.retry = retry
-
-    def SOA__expire(self, expire):
-        self.expire = expire
-
-    def SOA__minimum(self, minimum):
-        self.minimum = minimum
-
-    def parse_entry(self, entry, value):
-        if entry == '@':
-            entry = ''
-        if not entry.endswith('.'):
-            entry = entry + self.name
-        parts = value.split(' ')
-        record = getattr(dns, 'Record_%s' % parts[0], None)
-        if not record:
-            raise NotImplementedError("Record type %r not supported" % type)
-        self.records.append((entry, record(*parts[1:])))
+    @staticmethod
+    def parse_entry_section(options, name=None):
+        records = []
+        for entry, value in options:
+            if entry == '@':
+                entry = ''
+            if not entry.endswith('.'):
+                entry = entry + name
+            parts = value.split(' ')
+            record = getattr(dns, 'Record_%s' % parts[0], None)
+            if not record:
+                raise NotImplementedError("Record type %r not supported" % type)
+            records.append((entry, record(*parts[1:])))
+        return records
