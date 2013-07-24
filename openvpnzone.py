@@ -68,11 +68,34 @@ def extract_zones_from_status_file(status_path):
         return clients
 
 
-class OpenVpnStatusAuthority(FileAuthority):
+class InMemoryAuthority(FileAuthority):
+    """ In memory authority class - handles the data of one zone"""
+    def __init__(self, data=None):
+        FileAuthority.__init__(self, data)
+
+    def loadFile(self, data):
+        if type(data) is tuple and len(data) == 2:
+            self.setData(*data)
+
+    def setData(self, soa, records):
+        """ set authority data
+
+            :param twisted.names.dns.Record_SOA soa: SOA record for this zone.
+                you must add the soa to the records list yourself!!
+            :param dict records: dictionary with record entries for this
+                domain."""
+        self.soa = soa
+        self.records = records
+
+
+class OpenVpnAuthorityHandler(list):
     def __init__(self, config):
         self.config = config
-        FileAuthority.__init__(self, config.status_file)
-
+        # authority for the data itself:
+        self.authority = InMemoryAuthority()
+        self.append(self.authority)
+        # load data:
+        self.loadFile(self.config.status_file)
         # watch for file changes:
         signal.signal(signal.SIGUSR1, self.handle_signal)
         notifier = inotify.INotify()
@@ -88,8 +111,8 @@ class OpenVpnStatusAuthority(FileAuthority):
             additional data like SOA information must be passed
             as keyword option """
         self.name = '.'.join(clients.keys()[0].split('.')[1:])
-        self.records = {}
-        self.soa = (self.name, dns.Record_SOA(
+        records = {}
+        soa = (self.name, dns.Record_SOA(
             mname=self.config.master_name,
             rname=self.config.zone_admin,
             serial=int(os.path.getmtime(status_file)),
@@ -98,10 +121,11 @@ class OpenVpnStatusAuthority(FileAuthority):
             expire=self.config.expire,
             minimum=self.config.minimum,
         ))
-        for name, record in self.config.records + [self.soa]:
-            self.records.setdefault(name, []).append(record)
+        for name, record in self.config.records + [soa]:
+            records.setdefault(name, []).append(record)
         for client, address in clients.items():
-            self.records.setdefault(client.lower(), []).append(dns.Record_A(address))
+            records.setdefault(client.lower(), []).append(dns.Record_A(address))
+        self.authority.setData(soa, records)
 
     def handle_signal(self, a, b):
         self.loadFile(self.config.status_file)

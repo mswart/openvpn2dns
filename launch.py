@@ -1,13 +1,13 @@
 from twisted.application import internet, service
 from twisted.names import dns
 from twisted.names import server
-from openvpnzone import OpenVpnStatusAuthority
+from openvpnzone import OpenVpnAuthorityHandler
 from config import ConfigParser
 
 
 def createOpenvpn2DnsService():
     config = ConfigParser('openvpn2dns.cfg')
-    zones = [OpenVpnStatusAuthority(config)]
+    zones = OpenVpnAuthorityHandler(config)
 
     m = service.MultiService()
     for listen in config.listen:
