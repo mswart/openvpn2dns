@@ -2,7 +2,7 @@ from twisted.application import internet, service
 from twisted.names import dns
 from twisted.names import server
 from openvpnzone import OpenVpnStatusAuthority
-from parser import ConfigParser
+from config import ConfigParser
 
 
 def createOpenvpn2DnsService():

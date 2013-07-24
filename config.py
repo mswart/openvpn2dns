@@ -2,6 +2,11 @@ from twisted.names import dns
 
 
 class ConfigParser(object):
+    """ Parser and data storage for configuration information.
+        The file format uses the INI syntax but with multiple use of option
+        names per section therefore the config module is not usable.
+
+        :param str filename: file path to configuration file"""
     def __init__(self, filename=None):
         self.status_file = None
         self.listen = []
@@ -17,26 +22,49 @@ class ConfigParser(object):
         if filename:
             self.read_file(filename)
 
-    def read_file(self, file_name):
-        with open(file_name) as f:
+    @staticmethod
+    def read_data(filename):
+        """ Reads the given file name. It assumes that the file has a INI file
+            syntax. The parser returns the data without comments and fill
+            characters. It supports multiple option with the same name per
+            section but not multiple sections with the same name.
+
+            :param str filename: path to INI file
+            :return: a dictionary - the key is the section name value, the
+                option is a array of (option name, option value) tuples"""
+        sections = {}
+        with open(filename) as f:
             section = None
+            options = None
             for line in f:
                 # ignore comments:
                 if line.startswith('#'):
                     continue
                 line = line.strip()
+                if not line:
+                    continue
                 # handle section header:
                 if line.startswith('[') and line.endswith(']'):
+                    if section:  # save old section data
+                        sections[section] = options
                     section = line[1:-1]
-                    if section not in ['options', 'SOA', 'entries']:
-                        print('Warning: unknown section {}'.format(section))
+                    options = []
                     continue
+                if section is None:
+                    raise ValueError('Options without sections')
                 option, value = line.split('=', 1)
-                option = option.strip()
-                value = value.strip()
+                options.append((option.strip(), value.strip()))
+            if section:  # save old section data
+                sections[section] = options
+        return sections
+
+    def read_file(self, file_name):
+        data = self.read_data(file_name)
+        for section in ('options', 'SOA', 'entries'):
+            for option, value in data[section]:
                 if section == 'entries':
                     self.parse_entry(option, value)
-                elif section in ['options', 'SOA']:
+                else:
                     method = getattr(self, section + '__' + option, None)
                     if method is None:
                         print('Warning: unknown option {} in section {}'.format(
