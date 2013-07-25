@@ -119,9 +119,8 @@ class OpenVpnAuthorityHandler(list):
         """ Basic zone generation (uses only the client list),
             additional data like SOA information must be passed
             as keyword option """
-        name = '.'.join(clients.keys()[0].split('.')[1:])
         records = {}
-        soa = (name, dns.Record_SOA(
+        soa = (instance.name, dns.Record_SOA(
             mname=instance.mname,
             rname=instance.rname,
             serial=int(os.path.getmtime(instance.status_file)),
