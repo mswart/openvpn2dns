@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import os.path
 import warnings
 
 from twisted.names import dns
@@ -140,7 +141,7 @@ class ConfigParser(object):
         for option, value in self.data[name]:
             # status file:
             if option == 'status_file':
-                instance.status_file = value
+                instance.status_file = os.path.abspath(value)
             # slave name server notifies:
             elif option == 'notify':
                 instance.notify.append((value, 53))

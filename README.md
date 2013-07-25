@@ -124,7 +124,6 @@ Limitations
 openvpn2dns has some known limitations:
 
 - Hard coded configuration file name #1
-- Only one status file supported (in progress) #2
 - Support IPv6 address for OpenVPN clients #3
 - Missing reverse DNs zone #4
 

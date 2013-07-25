@@ -91,14 +91,13 @@ class InMemoryAuthority(FileAuthority):
 class OpenVpnAuthorityHandler(list):
     def __init__(self, config):
         self.config = config
-        # authority for the data itself:
+        # authorities for the data itself:
         self.authorities = {}
         for instance in self.config.instances:
             self.authorities[instance] = InMemoryAuthority()
-        self.append(self.authorities[instance])
+            self.append(self.authorities[instance])
         # load data:
-        for instance in self.config.instances:
-            self.loadInstance(self.config.instances[instance])
+        self.loadInstances()
         # watch for file changes:
         signal.signal(signal.SIGUSR1, self.handle_signal)
         notifier = inotify.INotify()
@@ -106,6 +105,11 @@ class OpenVpnAuthorityHandler(list):
         for instance in self.config.instances.values():
             notifier.watch(filepath.FilePath(instance.status_file),
                            callbacks=[self.notify])
+
+    def loadInstances(self):
+        """ (re)load data of all instances"""
+        for instance in self.config.instances:
+            self.loadInstance(self.config.instances[instance])
 
     def loadInstance(self, instance):
         clients = extract_zones_from_status_file(instance.status_file)
@@ -133,18 +137,23 @@ class OpenVpnAuthorityHandler(list):
         self.authorities[instance.name].setData(soa, records)
 
     def handle_signal(self, a, b):
-        self.loadFile(self.config.status_file)
+        self.loadInstances()
 
     def notify(self, ignored, filepath, mask):
-        print('{0} changed ({1}), rereading zone data'.format(filepath,
-              ','.join(inotify.humanReadableMask(mask))))
-        self.loadFile(self.config.status_file)
-        for server in self.config.notify:
+        instance = None
+        for one_instance in self.config.instances.values():
+            if one_instance.status_file == filepath.path:
+                instance = one_instance
+                break
+        if instance is None:
+            print('unknown status file: {0}'.format(filepath.path))
+            return
+        print('{0} changed ({1}), rereading instance {2}'.format(filepath,
+              ','.join(inotify.humanReadableMask(mask)), instance.name))
+        self.loadInstance(instance)
+        for server in instance.notify:
             r = NotifyResolver(servers=[server])
-
-            def test(message, *args):
-                print(message.__dict__)
-            r.sendNotify(self.name).addCallback(test)
+            r.sendNotify(instance.name)
 
 
 class NotifyResolver(Resolver):
