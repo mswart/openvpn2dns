@@ -101,20 +101,10 @@ add_entries = vpn-server
 Starting
 --------
 
-Uses the twisted ``twistd`` executable to launch openvpn2dns:
+Launch openvpn2dns with ``launch.py`` and pass the file name of your configuration file:
 
 ```
-twistd -y launch.py
-```
-
-At the moment the configuration file name is hard-coded to ``openvpn2dns.cfg`` #1.
-
-``twistd`` as additional option to specify to user id or the log destination. Use ``twistd --help`` for all option.
-
-I recommend running openvpn2dns as nobody and therefore launch it with:
-
-```
-twistd -y launch.py -u 65534 -g 65534
+launch.py <configuration file like openvpn2dns.ini>
 ```
 
 
@@ -123,7 +113,6 @@ Limitations
 
 openvpn2dns has some known limitations:
 
-- Hard coded configuration file name #1
 - Support IPv6 address for OpenVPN clients #3
 - Missing reverse DNs zone #4
 
