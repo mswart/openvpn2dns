@@ -110,17 +110,6 @@ launch.py <configuration file like openvpn2dns.ini>
 ```
 
 
-Limitations
------------
-
-openvpn2dns has some known limitations:
-
-- Support IPv6 address for OpenVPN clients #3
-- Missing reverse DNs zone #4
-
-I recommend using openvpn2dns only as hidden DNS server and explicit DNS servers (like bind ...) for the clients. openvpn2dns supports zone transfers and notify.
-
-
 Contributing
 ------------
 

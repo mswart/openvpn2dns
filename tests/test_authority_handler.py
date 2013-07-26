@@ -67,6 +67,32 @@ def test_a():
     assert payload.address == socket.inet_aton('198.51.100.8')
 
 
+def test_aaaa():
+    cp = ConfigParser()
+    cp.parse_data({
+        'options': [
+            ('instance', 'vpn.example.org'),
+        ],
+        'vpn.example.org': [
+            ('mname', 'dns.example.org'),
+            ('rname', 'dns.example.org'),
+            ('refresh', '1h'),
+            ('retry', '2h'),
+            ('expire', '3h'),
+            ('minimum', '4h'),
+            ('status_file', 'tests/samples/ipv6.ovpn-status-v1')
+        ]
+    })
+    c = ResolverChain(OpenVpnAuthorityHandler(cp))
+    d = c.query(dns.Query('one.vpn.example.org', dns.AAAA, dns.IN))
+    rr = d.result[0][0]
+    assert rr.name.name == 'one.vpn.example.org'
+    payload = rr.payload
+    assert payload.__class__ == dns.Record_AAAA
+    assert IP(socket.inet_ntop(socket.AF_INET6, payload.address)) \
+        == IP('fddc:abcd:1234::1008')
+
+
 def test_ptr():
     cp = ConfigParser()
     cp.parse_data({

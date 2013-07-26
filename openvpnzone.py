@@ -59,14 +59,20 @@ def extract_zones_from_status_file(status_path):
                     skip_next_lines += 1
                 continue
             if mode == 'clients':
-                clients[status_line.split(',')[0]] = None
+                clients[status_line.split(',')[0]] = []
             if mode == 'routes':
                 address, client = status_line.split(',')[0:2]
-                if '/' in address or address[-1].isalpha():
+                if '/' in address:  # subnet
+                    continue
+                try:
+                    address = IP(address)
+                except ValueError:  # cached route ...
+                    continue
+                if address.len() > 1:  # subnet
                     continue
                 if client not in clients:
                     raise ValueError('Error in status file')
-                clients[client] = address
+                clients[client].append(address)
         return clients
 
 
@@ -90,7 +96,8 @@ class InMemoryAuthority(FileAuthority):
         self.records = records
 
 
-AuthorityTuple = collections.namedtuple('AuthorityTuple', ('forward', 'backward4'))
+AuthorityTuple = collections.namedtuple('AuthorityTuple', ('forward',
+                                        'backward4', 'backward6'))
 
 
 class OpenVpnAuthorityHandler(list):
@@ -100,10 +107,15 @@ class OpenVpnAuthorityHandler(list):
         self.authorities = {}
         for instance in self.config.instances:
             self.authorities[instance] = AuthorityTuple(
-                forward=InMemoryAuthority(), backward4=InMemoryAuthority())
+                forward=InMemoryAuthority(),
+                backward4=InMemoryAuthority(),
+                backward6=InMemoryAuthority()
+            )
             self.append(self.authorities[instance].forward)
             if self.config.instances[instance].subnet4:
                 self.append(self.authorities[instance].backward4)
+            if self.config.instances[instance].subnet6:
+                self.append(self.authorities[instance].backward6)
         # load data:
         self.loadInstances()
         # watch for file changes:
@@ -113,6 +125,8 @@ class OpenVpnAuthorityHandler(list):
         for instance in self.config.instances.values():
             notifier.watch(filepath.FilePath(instance.status_file),
                            callbacks=[self.notify])
+        print('Serving {0} zones: {1}'.format(len(self),
+              ', '.join(map(lambda z: z.soa[0], self))))
 
     def loadInstances(self):
         """ (re)load data of all instances"""
@@ -138,24 +152,39 @@ class OpenVpnAuthorityHandler(list):
         )
         forward_records = {}
         backward4_records = {}
+        backward6_records = {}
         for name, record in instance.forword_records + [(instance.name, soa)]:
             forward_records.setdefault(name, []).append(record)
         for name, record in instance.backward4_records + [(instance.subnet4, soa)]:
             backward4_records.setdefault(name, []).append(record)
-        for client, address in clients.items():
+        for name, record in instance.backward6_records + [(instance.subnet6, soa)]:
+            backward6_records.setdefault(name, []).append(record)
+        for client, addresses in clients.items():
             if instance.suffix is not None:
                 if instance.suffix == '@':
                     client += '.' + instance.name
                 else:
                     client += '.' + instance.suffix
-            forward_records.setdefault(client.lower(), []).append(dns.Record_A(address))
-            backward4_records.setdefault(IP(address).reverseName()[:-1], []) \
-                .append(dns.Record_PTR(client.lower()))
+            client = client.lower()
+            for address in addresses:
+                reverse = IP(address).reverseName()[:-1]
+                if address.version() == 4:
+                    forward_records.setdefault(client, []) \
+                        .append(dns.Record_A(str(address)))
+                    backward4_records.setdefault(reverse, []) \
+                        .append(dns.Record_PTR(client))
+                elif address.version() == 6:
+                    forward_records.setdefault(client, []) \
+                        .append(dns.Record_AAAA(str(address)))
+                    backward6_records.setdefault(reverse, []) \
+                        .append(dns.Record_PTR(client))
         # push data to authorities:
         authority = self.authorities[instance.name]
         authority.forward.setData((instance.name, soa), forward_records)
         if instance.subnet4:
             authority.backward4.setData((instance.subnet4, soa), backward4_records)
+        if instance.subnet6:
+            authority.backward6.setData((instance.subnet6, soa), backward6_records)
 
     def handle_signal(self, a, b):
         self.loadInstances()

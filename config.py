@@ -47,8 +47,10 @@ class OpenVpnInstance(object):
         self.minimum = None
         self.forword_records = []
         self.backward4_records = []
+        self.backward6_records = []
         self.suffix = None
         self.subnet4 = None
+        self.subnet6 = None
 
 
 class ConfigParser(object):
@@ -153,6 +155,8 @@ class ConfigParser(object):
                 instance.suffix = value
             elif option == 'subnet4':
                 instance.subnet4 = IP(value.replace(' ', '/')).reverseName()[:-1]
+            elif option == 'subnet6':
+                instance.subnet6 = IP(value.replace(' ', '/')).reverseName()[:-1]
             # SOA entries:
             elif option in SOA:
                 if option == 'rname':
@@ -169,6 +173,7 @@ class ConfigParser(object):
                 records = self.parse_entry_section(self.data[value], name=name)
                 instance.forword_records += records
                 instance.backward4_records += records
+                instance.backward6_records += records
             else:
                 warnings.warn('Unknown option {0} in section {1}'.format(option,
                               name), UnusedOptionWarning, stacklevel=2)
