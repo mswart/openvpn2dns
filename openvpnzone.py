@@ -179,9 +179,9 @@ class OpenVpnAuthorityHandler(list):
         records.setdefault(zone_name, []).append(soa)
         for name, record in initial_data:
             if name == '@':
-                name = ''
-            if not name.endswith('.'):
-                name = name + zone_name
+                name = zone_name
+            elif not name.endswith('.'):
+                name = name + '.' + zone_name
             records.setdefault(name, []).append(record)
         return records
 

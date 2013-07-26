@@ -166,14 +166,20 @@ class ConfigParser(object):
                                   OptionRedifinitionWarning, stacklevel=2)
                 setattr(instance, option, value)
             # additional entries:
-            elif option == 'add_entries':
+            elif option in ['add_entries',
+                            'add_forward_entries', 'add_backward_entries',
+                            'add_backward4_entries', 'add_backward6_entries']:
                 if value not in self.data:
                     raise MissingSectionError('Referencing unknown section {0}'
                                               .format(value))
                 records = self.parse_entry_section(self.data[value])
-                instance.forward_records += records
-                instance.backward4_records += records
-                instance.backward6_records += records
+                type = option[4:-8]
+                if type in ('', 'forward'):
+                    instance.forward_records += records
+                if type in ('', 'backward', 'backward4'):
+                    instance.backward4_records += records
+                if type in ('', 'backward', 'backward6'):
+                    instance.backward6_records += records
             else:
                 warnings.warn('Unknown option {0} in section {1}'.format(option,
                               name), UnusedOptionWarning, stacklevel=2)
