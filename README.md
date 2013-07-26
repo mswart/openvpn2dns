@@ -10,13 +10,15 @@ they as DNS server (using Python's twisted module).
 
 Afterwards all connected VPN clients have valid DNS entries.
 
+The server supports zone transfers (``AXFR``) and zone update notifies and can therefore used as master server.
+
 
 Installation
 ------------
 
 Install the following dependencies e.g. with your package management system:
 
-- Python 2.7.x (Python 3.x support missing because of leaking twisted support)
+- Python 2.7.x (python 3 is not supported by twisted)
 - the twisted Python module (I tested twisted 11.1)
 - the IPy Python module
 
@@ -118,9 +120,30 @@ Starting
 Launch openvpn2dns with ``launch.py`` and pass the file name of your configuration file:
 
 ```
-launch.py <configuration file like openvpn2dns.ini>
+python2 launch.py <configuration file like openvpn2dns.ini>
 ```
 
+The most options setting can be specified by command line options. To get a complete list and help run:
+
+```
+python2 launch.py --help
+```
+
+
+Production Usage
+----------------
+
+``openvpn2dns`` is stable and usable for production service.
+
+To handle a higher query count run openvpn2dns as hidden master dns server and use optimized dns server to handle the query load. ``openvpn2dns`` supports zone transfers and the ``notify`` option pushes chances fast to slave servers.
+
+The server is written python and security holes are therefore unlikely. But to be sure it is recommended to specify a ``user`` and ``group`` and set ``drop-privileges`` to ``true``: the process drops all privileges after opened the network sockets.
+
+**Warning:** ``openvpn2dns`` does no access control. All clients can query every data from the dns zone or transfer the entire zone. Adjust the firewall to block unwanted connections.
+
+The ``scripts`` directory contains a ``upstart`` and a ``init.d`` script. You can copy them. You may want to replace the launch and configuration path inside the scripts.
+
+**Info:** The ``init.d`` passes ``--daemon=yes`` and --pidfile=/var/run/openvpn2dns.pid`` via command line arguments. Values for these options inside the configuration file have no effect.
 
 Contributing
 ------------

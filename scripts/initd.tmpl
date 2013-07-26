@@ -1,0 +1,58 @@
+#! /bin/sh
+
+### BEGIN INIT INFO
+# Provides:             openvpn2dns
+# Required-Start:       $remote_fs $syslog
+# Required-Stop:        $remote_fs $syslog
+# Default-Start:        2 3 4 5
+# Default-Stop:
+# Short-Description:    A pure python DNS server serving the content of OpenVPN status files.
+### END INIT INFO
+
+set -e
+
+. /lib/lsb/init-functions
+
+LAUNCH_PATH=/etc/openvpn/2dns/launch.py
+CONFIG_PATH=/etc/openvpn/2dns/openvpn2dns.ini
+PYTHON_PATH=/usr/bin/python2
+PIDFILE=/var/run/openvpn2dns.pid
+
+
+case "$1" in
+  start)
+        log_daemon_msg "Starting OpenVPN status dns server" "openvpn2dns" || true
+        if start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $PYTHON_PATH -- $LAUNCH_PATH --daemon=yes --pidfile $PIDFILE -- $CONFIG_PATH; then
+            log_end_msg 0 || true
+        else
+            log_end_msg 1 || true
+        fi
+        ;;
+  stop)
+        log_daemon_msg "Stopping OpenVPN status dns server" "openvpn2dns" || true
+        if start-stop-daemon --stop --quiet --pidfile $PIDFILE; then
+            log_end_msg 0 || true
+        else
+            log_end_msg 1 || true
+        fi
+        ;;
+  restart)
+        log_daemon_msg "Restarting OpenVPN status dns server" "openvpn2dns" || true
+        start-stop-daemon --stop --quiet --oknodo --retry 30 --pidfile $PIDFILE
+        if start-stop-daemon --start --quiet --oknodo --pidfile $PIDFILE --exec $PYTHON_PATH -- $LAUNCH_PATH --daemon=yes --pidfile $PIDFILE -- $CONFIG_PATH; then
+            log_end_msg 0 || true
+        else
+            log_end_msg 1 || true
+        fi
+        ;;
+
+  status)
+        status_of_proc -p $PIDFILE $PYTHON_PATH openvpn2dns && exit 0 || exit $?
+        ;;
+
+  *)
+        log_action_msg "Usage: /etc/init.d/openvpn2dns {start|stop|restart|status}" || true
+        exit 1
+esac
+
+exit 0
