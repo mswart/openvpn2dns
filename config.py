@@ -4,6 +4,7 @@ import os.path
 import warnings
 
 from twisted.names import dns
+from IPy import IP
 
 
 class ConfigurationError(Exception):
@@ -44,8 +45,10 @@ class OpenVpnInstance(object):
         self.retry = None
         self.expire = None
         self.minimum = None
-        self.records = []
+        self.forword_records = []
+        self.backward4_records = []
         self.suffix = None
+        self.subnet4 = None
 
 
 class ConfigParser(object):
@@ -148,6 +151,8 @@ class ConfigParser(object):
                 instance.notify.append((value, 53))
             elif option == 'suffix':
                 instance.suffix = value
+            elif option == 'subnet4':
+                instance.subnet4 = IP(value.replace(' ', '/')).reverseName()[:-1]
             # SOA entries:
             elif option in SOA:
                 if option == 'rname':
@@ -161,8 +166,9 @@ class ConfigParser(object):
                 if value not in self.data:
                     raise MissingSectionError('Referencing unknown section {0}'
                                               .format(value))
-                instance.records += self.parse_entry_section(self.data[value],
-                                                             name=name)
+                records = self.parse_entry_section(self.data[value], name=name)
+                instance.forword_records += records
+                instance.backward4_records += records
             else:
                 warnings.warn('Unknown option {0} in section {1}'.format(option,
                               name), UnusedOptionWarning, stacklevel=2)

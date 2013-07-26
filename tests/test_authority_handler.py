@@ -4,6 +4,7 @@ import socket
 
 from twisted.names import dns
 from twisted.names.resolve import ResolverChain
+from IPy import IP
 
 from config import ConfigParser
 from openvpnzone import OpenVpnAuthorityHandler
@@ -64,6 +65,33 @@ def test_a():
     payload = rr.payload
     assert payload.__class__ == dns.Record_A
     assert payload.address == socket.inet_aton('198.51.100.8')
+
+
+def test_ptr():
+    cp = ConfigParser()
+    cp.parse_data({
+        'options': [
+            ('instance', 'vpn.example.org'),
+        ],
+        'vpn.example.org': [
+            ('mname', 'dns.example.org'),
+            ('rname', 'dns.example.org'),
+            ('refresh', '1h'),
+            ('retry', '2h'),
+            ('expire', '3h'),
+            ('minimum', '4h'),
+            ('subnet4', '198.51.100.0/24'),
+            ('status_file', 'tests/samples/one.ovpn-status-v1')
+        ]
+    })
+    c = ResolverChain(OpenVpnAuthorityHandler(cp))
+    reverse = '8.100.51.198.in-addr.arpa'
+    d = c.query(dns.Query(reverse, dns.PTR, dns.IN))
+    rr = d.result[0][0]
+    assert rr.name.name == reverse
+    payload = rr.payload
+    assert payload.__class__ == dns.Record_PTR
+    assert payload.name.name == 'one.vpn.example.org'
 
 
 def test_extra_ns():

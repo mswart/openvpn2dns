@@ -1,5 +1,6 @@
 import os.path
 import signal
+import collections
 
 from twisted.names import dns
 from twisted.names.authority import FileAuthority
@@ -7,6 +8,7 @@ from twisted.names.client import Resolver
 from twisted.internet import inotify
 from twisted.internet import defer
 from twisted.python import filepath
+from IPy import IP
 
 
 def extract_status_file_path(config_path):
@@ -88,14 +90,20 @@ class InMemoryAuthority(FileAuthority):
         self.records = records
 
 
+AuthorityTuple = collections.namedtuple('AuthorityTuple', ('forward', 'backward4'))
+
+
 class OpenVpnAuthorityHandler(list):
     def __init__(self, config):
         self.config = config
         # authorities for the data itself:
         self.authorities = {}
         for instance in self.config.instances:
-            self.authorities[instance] = InMemoryAuthority()
-            self.append(self.authorities[instance])
+            self.authorities[instance] = AuthorityTuple(
+                forward=InMemoryAuthority(), backward4=InMemoryAuthority())
+            self.append(self.authorities[instance].forward)
+            if self.config.instances[instance].subnet4:
+                self.append(self.authorities[instance].backward4)
         # load data:
         self.loadInstances()
         # watch for file changes:
@@ -119,8 +127,7 @@ class OpenVpnAuthorityHandler(list):
         """ Basic zone generation (uses only the client list),
             additional data like SOA information must be passed
             as keyword option """
-        records = {}
-        soa = (instance.name, dns.Record_SOA(
+        soa = dns.Record_SOA(
             mname=instance.mname,
             rname=instance.rname,
             serial=int(os.path.getmtime(instance.status_file)),
@@ -128,17 +135,27 @@ class OpenVpnAuthorityHandler(list):
             retry=instance.retry,
             expire=instance.expire,
             minimum=instance.minimum,
-        ))
-        for name, record in instance.records + [soa]:
-            records.setdefault(name, []).append(record)
+        )
+        forward_records = {}
+        backward4_records = {}
+        for name, record in instance.forword_records + [(instance.name, soa)]:
+            forward_records.setdefault(name, []).append(record)
+        for name, record in instance.backward4_records + [(instance.subnet4, soa)]:
+            backward4_records.setdefault(name, []).append(record)
         for client, address in clients.items():
             if instance.suffix is not None:
                 if instance.suffix == '@':
                     client += '.' + instance.name
                 else:
                     client += '.' + instance.suffix
-            records.setdefault(client.lower(), []).append(dns.Record_A(address))
-        self.authorities[instance.name].setData(soa, records)
+            forward_records.setdefault(client.lower(), []).append(dns.Record_A(address))
+            backward4_records.setdefault(IP(address).reverseName()[:-1], []) \
+                .append(dns.Record_PTR(client.lower()))
+        # push data to authorities:
+        authority = self.authorities[instance.name]
+        authority.forward.setData((instance.name, soa), forward_records)
+        if instance.subnet4:
+            authority.backward4.setData((instance.subnet4, soa), backward4_records)
 
     def handle_signal(self, a, b):
         self.loadInstances()
