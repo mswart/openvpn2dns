@@ -45,7 +45,7 @@ class OpenVpnInstance(object):
         self.retry = None
         self.expire = None
         self.minimum = None
-        self.forword_records = []
+        self.forward_records = []
         self.backward4_records = []
         self.backward6_records = []
         self.suffix = None
@@ -170,8 +170,8 @@ class ConfigParser(object):
                 if value not in self.data:
                     raise MissingSectionError('Referencing unknown section {0}'
                                               .format(value))
-                records = self.parse_entry_section(self.data[value], name=name)
-                instance.forword_records += records
+                records = self.parse_entry_section(self.data[value])
+                instance.forward_records += records
                 instance.backward4_records += records
                 instance.backward6_records += records
             else:
@@ -184,10 +184,6 @@ class ConfigParser(object):
     def parse_entry_section(options, name=None):
         records = []
         for entry, value in options:
-            if entry == '@':
-                entry = ''
-            if not entry.endswith('.'):
-                entry = entry + name
             parts = value.split(' ')
             record = getattr(dns, 'Record_%s' % parts[0], None)
             if not record:

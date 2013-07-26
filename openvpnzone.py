@@ -171,6 +171,20 @@ class OpenVpnAuthorityHandler(list):
         clients = extract_zones_from_status_file(instance.status_file)
         self.build_zone_from_clients(instance, clients)
 
+    @staticmethod
+    def create_record_base(zone_name, soa, initial_data):
+        if zone_name is None:
+            return {}
+        records = {}
+        records.setdefault(zone_name, []).append(soa)
+        for name, record in initial_data:
+            if name == '@':
+                name = ''
+            if not name.endswith('.'):
+                name = name + zone_name
+            records.setdefault(name, []).append(record)
+        return records
+
     def build_zone_from_clients(self, instance, clients):
         """ Basic zone generation (uses only the client list),
             additional data like SOA information must be passed
@@ -184,15 +198,12 @@ class OpenVpnAuthorityHandler(list):
             expire=instance.expire,
             minimum=instance.minimum,
         )
-        forward_records = {}
-        backward4_records = {}
-        backward6_records = {}
-        for name, record in instance.forword_records + [(instance.name, soa)]:
-            forward_records.setdefault(name, []).append(record)
-        for name, record in instance.backward4_records + [(instance.subnet4, soa)]:
-            backward4_records.setdefault(name, []).append(record)
-        for name, record in instance.backward6_records + [(instance.subnet6, soa)]:
-            backward6_records.setdefault(name, []).append(record)
+        forward_records = self.create_record_base(instance.name, soa,
+                                                  instance.forward_records)
+        backward4_records = self.create_record_base(instance.subnet4, soa,
+                                                    instance.backward4_records)
+        backward6_records = self.create_record_base(instance.subnet6, soa,
+                                                    instance.backward6_records)
         for client, addresses in clients.items():
             if instance.suffix is not None:
                 if instance.suffix == '@':

@@ -150,6 +150,37 @@ def test_extra_ns():
         == set(('dns-a.example.org', 'dns-b.example.org'))
 
 
+def test_extra_ns_backwards():
+    cp = ConfigParser()
+    cp.parse_data({
+        'options': [
+            ('instance', 'vpn.example.org'),
+        ],
+        'vpn.example.org': [
+            ('mname', 'dns.example.org'),
+            ('rname', 'dns.example.org'),
+            ('refresh', '1h'),
+            ('retry', '2h'),
+            ('expire', '3h'),
+            ('minimum', '4h'),
+            ('subnet4', '198.51.100.0/24'),
+            ('status_file', 'tests/samples/empty.ovpn-status-v1'),
+            ('add_entries', 'ns')
+        ],
+        'ns': [
+            ('@', 'NS dns-a.example.org'),
+            ('@', 'NS dns-b.example.org')
+        ]
+    })
+    c = ResolverChain(OpenVpnAuthorityHandler(cp))
+    d = c.query(dns.Query('100.51.198.in-addr.arpa', dns.NS, dns.IN))
+    for rr in d.result[0]:
+        assert rr.name.name == '100.51.198.in-addr.arpa'
+        assert rr.payload.__class__ == dns.Record_NS
+    assert set(map(lambda rr: rr.payload.name.name, d.result[0])) \
+        == set(('dns-a.example.org', 'dns-b.example.org'))
+
+
 def test_suffix():
     cp = ConfigParser()
     cp.parse_data({
