@@ -2,7 +2,7 @@
 import pytest
 
 from config import ConfigParser, OpenVpnInstance
-from config import MissingSectionError, InstanceRedifinitionError
+from config import ConfigurationError, MissingSectionError, InstanceRedifinitionError
 from config import UnusedOptionWarning
 
 
@@ -74,6 +74,24 @@ def test_useless_options_option(cp, recwarn):
 def test_listen_address(cp):
     cp.parse_data({'options': (('listen', '127.0.0.1:53'), )})
     assert cp.listen_addresses == [('127.0.0.1', 53)]
+
+
+def test_daemon(cp):
+    cp.parse_data({'options': tuple()})
+    assert cp.daemon is None
+    for s in ('y', 'yEs', 'True', 't', '1'):
+        cp.daemon = None
+        cp.parse_data({'options': (('daemon', s), )})
+        assert cp.daemon is True
+    for s in ('n', 'No', 'faLSE', 'f', '0'):
+        cp.daemon = None
+        cp.parse_data({'options': (('daemon', s), )})
+        assert cp.daemon is False
+
+
+def test_invalid_daemon(cp):
+    with pytest.raises(ConfigurationError):
+        cp.parse_data({'options': (('daemon', 'yasd'), )})
 
 
 def test_add_instance(cp):

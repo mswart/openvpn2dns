@@ -2,7 +2,8 @@
 import os
 import argparse
 
-from twisted.application import internet, service
+from twisted.application import service, internet, reactors
+from twisted.application.reactors import installReactor
 from twisted.internet.task import deferLater
 from twisted.names import dns
 from twisted.names import server
@@ -40,17 +41,45 @@ class OpenVpn2DnsApplication(UnixApplicationRunner):
         UnixApplicationRunner.postApplication(self)
 
 
-def file_path(value):
-    if not os.path.isfile(value):
-        raise argparse.ArgumentTypeError('Could not found config file {0}'
-                                         .format(value))
-    return value
+def try_parse(callback):
+    def parse(value):
+        try:
+            return callback(value)
+        except Exception as e:
+            raise argparse.ArgumentTypeError(e.message)
+    return parse
+
+
+class BooleanAction(argparse.Action):
+    def __call__(self, parser, namespace, values, option_string=None):
+        setattr(namespace, self.dest, values if values is not None else True)
 
 
 parser = argparse.ArgumentParser(description='A pure python DNS server serving'
                                  ' the content of OpenVPN status files')
-parser.add_argument('configfile', type=file_path,
+parser.add_argument('configfile', type=try_parse(ConfigParser.parse_filename),
                     help='file path to configuration file')
+parser.add_argument('--reactor', choices=sorted(map(lambda r: r.shortName,
+                    reactors.getReactorTypes())),
+                    help='Select reactor type for twisted')
+parser.add_argument('--daemon', type=try_parse(ConfigParser.parse_boolean),
+                    action=BooleanAction, nargs='?', metavar='BOOL',
+                    help='Whether detach and run as daemon')
+parser.add_argument('--drop-privileges', '--drop', dest='drop',
+                    type=try_parse(ConfigParser.parse_boolean),
+                    action=BooleanAction, nargs='?', metavar='BOOL',
+                    help='Whether drop privileges after opened sockets. User'
+                    ' and group information needed (via option or config)')
+parser.add_argument('--user', type=try_parse(ConfigParser.parse_userid),
+                    help='User id or name to use when dropping privileges after'
+                    ' opened sockets (see drop-privileges option)')
+parser.add_argument('--group', type=try_parse(ConfigParser.parse_groupid),
+                    help='Group id or name to use when dropping privileges after'
+                    ' opened sockets (see drop-privileges option)')
+parser.add_argument('--log', help='Log destination (file name, "-" for stdout or'
+                    ' "syslog" for syslog)')
+parser.add_argument('--pid-file', '--pidfile', dest='pidfile', metavar='FILE-NAME',
+                    help='Name of the pidfile, recommended for daemon mode')
 
 args = parser.parse_args()
 
@@ -59,18 +88,35 @@ class DefaultDict(dict):
     def __getitem__(self, name):
         return self.get(name, None)
 
-# emulate twisted configuration:
-twisted_config = DefaultDict()
-twisted_config['nodaemon'] = True
-twisted_config['no_save'] = True
-twisted_config['originalname'] = 'openvpn2dns'
-twisted_config['rundir'] = '.'
-
 # parse configuration file:
 try:
     config = ConfigParser(args.configfile)
 except ConfigurationError as e:
     parser.error(e)
+
+# emulate twisted configuration:
+twisted_config = DefaultDict()
+twisted_config['nodaemon'] = not (args.daemon or config.daemon or False)
+twisted_config['no_save'] = True
+twisted_config['originalname'] = 'openvpn2dns'
+twisted_config['prefix'] = 'openvpn2dns'
+twisted_config['rundir'] = '.'
+if (args.drop or config.drop) is True:
+    twisted_config['uid'] = args.user or config.user
+    if not twisted_config['uid']:
+        parser.error('Need user (and group) information to drop privileges')
+    twisted_config['gid'] = args.group or config.group
+    if not twisted_config['gid']:
+        parser.error('Need group information to drop privileges')
+if (args.log or config.log) == 'syslog':
+    twisted_config['syslog'] = True
+elif args.log or config.log:
+    twisted_config['log'] = args.log or config.log
+twisted_config['pidfile'] = args.pidfile or config.pidfile
+
+
+if args.reactor or config.reactor:
+    installReactor(args.reactor or config.reactor)
 
 # run appliation:
 OpenVpn2DnsApplication(config, twisted_config).run()

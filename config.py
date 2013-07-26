@@ -2,6 +2,8 @@ from __future__ import print_function
 
 import os.path
 import warnings
+import pwd
+import grp
 
 from twisted.names import dns
 from IPy import IP
@@ -61,6 +63,13 @@ class ConfigParser(object):
         :param str filename: file path to configuration file"""
     def __init__(self, filename=None):
         self.listen_addresses = []
+        self.daemon = None
+        self.drop = None
+        self.user = None
+        self.group = None
+        self.log = None
+        self.pidfile = None
+        self.reactor = None
         self.instances = {}
         if filename:
             self.read_file(filename)
@@ -107,6 +116,55 @@ class ConfigParser(object):
         """ Read and parse the configuration file"""
         self.parse_data(self.read_data(file_name))
 
+    @staticmethod
+    def parse_boolean(value):
+        if value.lower() in ['true', 't', 'yes', 'y', '1']:
+            return True
+        if value.lower() in ['false', 'f', 'no', 'n', '0']:
+            return False
+        raise ValueError('Could not parse boolean value')
+
+    @staticmethod
+    def parse_filename(value):
+        if not os.path.isfile(value):
+            raise ValueError('Could not found config file {0}'.format(value))
+        return value
+
+    @staticmethod
+    def parse_userid(value):
+        try:
+            return int(value)
+        except ValueError:
+            pass
+        try:
+            return pwd.getpwnam(value)[2]
+        except KeyError:
+            raise ValueError('Unknown user name or id: {0}'.format(value))
+
+    @staticmethod
+    def parse_groupid(value):
+        try:
+            return int(value)
+        except ValueError:
+            pass
+        try:
+            return grp.getgrnam(value)[2]
+        except KeyError:
+            raise ValueError('Unknown group name or id: {0}'.format(value))
+
+    def set_single_option(self, name, value, convert=None):
+        old_value = getattr(self, name, object())
+        if old_value is not None:
+            warnings.warn('Overwrite old {0} option value ({1})'
+                          .format(name, old_value), OptionRedifinitionWarning,
+                          stacklevel=2)
+        if convert is not None:
+            try:
+                value = convert(value)
+            except Exception as e:
+                raise ConfigurationError(e.message)
+        setattr(self, name, value)
+
     def parse_data(self, data):
         """ Parse configuration data
 
@@ -122,6 +180,20 @@ class ConfigParser(object):
                 self.add_listen_address(value)
             elif option == 'instance':
                 self.parse_instance(value)
+            elif option == 'reactor':
+                self.set_single_option('reactor', value)
+            elif option == 'log':
+                self.set_single_option('log', value)
+            elif option == 'daemon':
+                self.set_single_option('daemon', value, self.parse_boolean)
+            elif option == 'drop-privileges':
+                self.set_single_option('drop', value, self.parse_boolean)
+            elif option == 'user':
+                self.set_single_option('user', value, self.parse_userid)
+            elif option == 'group':
+                self.set_single_option('group', value, self.parse_groupid)
+            elif option == 'pidfile':
+                self.set_single_option('pidfile', value, self.parse_boolean)
             else:
                 warnings.warn('Unknown option {0} in options section'
                               .format(option), UnusedOptionWarning,

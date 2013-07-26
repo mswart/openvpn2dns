@@ -37,6 +37,13 @@ openvpn2dns uses a INI-style file configuration but handles and supports multipl
 
 - **listen**: Specify on which address and port the DNS server should listen. You must specify the a port (DNS default port is 53). This option can be specify multiple times.
 - **instance**: Define one OpenVPN instance (one status file that should be served). The value is the name for the zone and the section that contains options above this instance.
+- **daemon**: Whether detach and run as daemon
+- **drop-privileges**: Whether drop privileges after opened sockets. User and group information needed (via option or config)
+- **user**: User id or name to use when dropping privileges after opened sockets (see drop-privileges option)
+- **group**: Group id or name to use when dropping privileges after opened sockets (see drop-privileges option)
+- **log**: Log destination (file name, ``-`` for stdout or ``syslog`` for syslog)
+- **pidfile**: Name of the pidfile, recommended for daemon mode
+- **reactor**: twisted reactor type for twisted
 
 
 ### instance section
