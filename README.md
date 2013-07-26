@@ -18,6 +18,7 @@ Install the following dependencies e.g. with your package management system:
 
 - Python 2.7.x (Python 3.x support missing because of leaking twisted support)
 - the twisted Python module (I tested twisted 11.1)
+- the IPy Python module
 
 Clone this repository to get the openvpn2dns source code:
 

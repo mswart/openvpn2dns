@@ -3,6 +3,8 @@ python:
   - "2.6"
   - "2.7"
 # install dependency:
-before_script: pip install twisted
+before_script:
+  - pip install twisted
+  - pip install IPy
 # command to run tests:
 script: "py.test"
