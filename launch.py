@@ -3,6 +3,7 @@ import os
 import argparse
 
 from twisted.application import internet, service
+from twisted.internet.task import deferLater
 from twisted.names import dns
 from twisted.names import server
 from twisted.scripts._twistd_unix import UnixApplicationRunner
@@ -20,11 +21,11 @@ class OpenVpn2DnsApplication(UnixApplicationRunner):
         return service.Application('OpenVPN2DNS')
 
     def createOpenvpn2DnsService(self):
-        zones = OpenVpnAuthorityHandler(self.service_config)
+        self.zones = OpenVpnAuthorityHandler(self.service_config)
 
         m = service.MultiService()
         for listen in self.service_config.listen_addresses:
-            f = server.DNSServerFactory(zones, None, None, 2)
+            f = server.DNSServerFactory(self.zones, None, None, 2)
             p = dns.DNSDatagramProtocol(f)
             f.noisy = 0
             for (klass, arg) in [(internet.TCPServer, f), (internet.UDPServer, p)]:
@@ -34,6 +35,8 @@ class OpenVpn2DnsApplication(UnixApplicationRunner):
 
     def postApplication(self):
         self.createOpenvpn2DnsService()
+        from twisted.internet import reactor
+        deferLater(reactor, 1, self.zones.start_notify)
         UnixApplicationRunner.postApplication(self)
 
 

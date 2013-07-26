@@ -92,8 +92,41 @@ class InMemoryAuthority(FileAuthority):
                 you must add the soa to the records list yourself!!
             :param dict records: dictionary with record entries for this
                 domain."""
+        if soa == self.soa or self.changed(soa, records) is False:
+            if type(soa) is tuple:
+                print('skip unchanged update for zone {0}'.format(soa[0]))
+            return False
         self.soa = soa
         self.records = records
+        return True
+
+    def changed(self, soa, records):
+        """ Checks whether the new record list differs from the old one"""
+        if self.records is None:  # previously set data
+            return True
+        if len(self.records) != len(records):
+            return True
+        for name in self.records:
+            if name not in records:
+                return True
+            if len(self.records[name]) != len(records[name]):
+                return True
+            for record in self.records[name]:
+                for new_record in records[name]:
+                    if new_record == record:
+                        break
+                    if new_record.__class__ is dns.Record_SOA and \
+                            record.__class__ is dns.Record_SOA and \
+                            new_record.mname == record.mname and \
+                            new_record.rname == record.rname and \
+                            new_record.refresh == record.refresh and \
+                            new_record.retry == record.retry and \
+                            new_record.expire == record.expire and \
+                            new_record.minimum == record.minimum:
+                        break
+                else:
+                    return True
+        return False
 
 
 AuthorityTuple = collections.namedtuple('AuthorityTuple', ('forward',
@@ -103,6 +136,7 @@ AuthorityTuple = collections.namedtuple('AuthorityTuple', ('forward',
 class OpenVpnAuthorityHandler(list):
     def __init__(self, config):
         self.config = config
+        self.send_notify = False
         # authorities for the data itself:
         self.authorities = {}
         for instance in self.config.instances:
@@ -124,7 +158,7 @@ class OpenVpnAuthorityHandler(list):
         notifier.startReading()
         for instance in self.config.instances.values():
             notifier.watch(filepath.FilePath(instance.status_file),
-                           callbacks=[self.notify])
+                           callbacks=[self.status_file_changed])
         print('Serving {0} zones: {1}'.format(len(self),
               ', '.join(map(lambda z: z.soa[0], self))))
 
@@ -180,16 +214,19 @@ class OpenVpnAuthorityHandler(list):
                         .append(dns.Record_PTR(client))
         # push data to authorities:
         authority = self.authorities[instance.name]
-        authority.forward.setData((instance.name, soa), forward_records)
+        if authority.forward.setData((instance.name, soa), forward_records):
+            self.notify(instance, instance.name)
         if instance.subnet4:
-            authority.backward4.setData((instance.subnet4, soa), backward4_records)
+            if authority.backward4.setData((instance.subnet4, soa), backward4_records):
+                self.notify(instance, instance.subnet4)
         if instance.subnet6:
-            authority.backward6.setData((instance.subnet6, soa), backward6_records)
+            if authority.backward6.setData((instance.subnet6, soa), backward6_records):
+                self.notify(instance, instance.subnet6)
 
     def handle_signal(self, a, b):
         self.loadInstances()
 
-    def notify(self, ignored, filepath, mask):
+    def status_file_changed(self, ignored, filepath, mask):
         instance = None
         for one_instance in self.config.instances.values():
             if one_instance.status_file == filepath.path:
@@ -201,9 +238,23 @@ class OpenVpnAuthorityHandler(list):
         print('{0} changed ({1}), rereading instance {2}'.format(filepath,
               ','.join(inotify.humanReadableMask(mask)), instance.name))
         self.loadInstance(instance)
+
+    def notify(self, instance, name):
+        if self.send_notify is not True:
+            return
         for server in instance.notify:
+            print('Notify {0} new data for zone {1}'.format(server[0], name))
             r = NotifyResolver(servers=[server])
-            r.sendNotify(instance.name)
+            r.sendNotify(name)
+
+    def start_notify(self):
+        self.send_notify = True
+        for instance in self.config.instances.values():
+            self.notify(instance, instance.name)
+            if instance.subnet4:
+                self.notify(instance, instance.subnet4)
+            if instance.subnet6:
+                self.notify(instance, instance.subnet6)
 
 
 class NotifyResolver(Resolver):
