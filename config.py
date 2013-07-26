@@ -33,10 +33,54 @@ class OptionRedifinitionWarning(ConfigurationWarning):
     pass
 
 
-SOA = ['rname', 'mname', 'refresh', 'retry', 'expire', 'minimum']
+def extract_status_file_path(config_path):
+    """ Extracts the path to the openvpn status file from a openvpn config.
+
+        :raises EnvironmentError: if the config does not contain a status file
+            entry
+        :return: the absolute path to the status file"""
+    import re
+    status_search = re.compile(r'^\s*(?P<option>(status|server|server-ipv6))\s+(?P<value>[^#]+)(#.*)?$')
+
+    status_file = None
+    subnet4 = None
+    subnet6 = None
+
+    with open(config_path, 'r') as conf_file:
+        for conf_line in conf_file:
+            match = status_search.match(conf_line)
+            if not match:
+                continue
+            if match.group('option') == 'status':
+                status_file = os.path.abspath(os.path.join(config_path, '..',
+                                              match.group('value').strip()))
+            elif match.group('option') == 'server':
+                subnet4 = match.group('value').strip()
+            elif match.group('option') == 'server-ipv6':
+                subnet6 = match.group('value').strip()
+
+    if not status_file:
+        raise EnvironmentError('You must specify a status entry!')
+
+    return (status_file, subnet4, subnet6)
 
 
-class OpenVpnInstance(object):
+class SetSingleValueMixin:
+    def set_single_option(self, name, value, convert=None):
+        old_value = getattr(self, name, object())
+        if old_value is not None:
+            warnings.warn('Overwrite old {0} option value ({1})'
+                          .format(name, old_value), OptionRedifinitionWarning,
+                          stacklevel=2)
+        if convert is not None:
+            try:
+                value = convert(value)
+            except Exception as e:
+                raise ConfigurationError(e.message)
+        setattr(self, name, value)
+
+
+class OpenVpnInstance(object, SetSingleValueMixin):
     def __init__(self, name):
         self.name = name
         self.status_file = None
@@ -55,7 +99,7 @@ class OpenVpnInstance(object):
         self.subnet6 = None
 
 
-class ConfigParser(object):
+class ConfigParser(object, SetSingleValueMixin):
     """ Parser and data storage for configuration information.
         The file format uses the INI syntax but with multiple use of option
         names per section therefore the config module is not usable.
@@ -152,18 +196,9 @@ class ConfigParser(object):
         except KeyError:
             raise ValueError('Unknown group name or id: {0}'.format(value))
 
-    def set_single_option(self, name, value, convert=None):
-        old_value = getattr(self, name, object())
-        if old_value is not None:
-            warnings.warn('Overwrite old {0} option value ({1})'
-                          .format(name, old_value), OptionRedifinitionWarning,
-                          stacklevel=2)
-        if convert is not None:
-            try:
-                value = convert(value)
-            except Exception as e:
-                raise ConfigurationError(e.message)
-        setattr(self, name, value)
+    @staticmethod
+    def parse_net(value):
+        return IP(value.replace(' ', '/')).reverseName()[:-1]
 
     def parse_data(self, data):
         """ Parse configuration data
@@ -217,20 +252,28 @@ class ConfigParser(object):
         if name not in self.data:
             raise MissingSectionError('section for instance {0}'.format(name))
         for option, value in self.data[name]:
-            # status file:
-            if option == 'status_file':
-                instance.status_file = os.path.abspath(value)
+            # openvpn server information:
+            if option == 'server_config':
+                status, subnet4, subnet6 = extract_status_file_path(value)
+                instance.set_single_option('status_file', status)
+                if subnet4:
+                    instance.set_single_option('subnet4', subnet4, self.parse_net)
+                if subnet6:
+                    instance.set_single_option('subnet6', subnet6, self.parse_net)
+            elif option == 'status_file':
+                instance.set_single_option('status_file', os.path.abspath(value))
+            elif option == 'subnet4':
+                instance.set_single_option('subnet4', value, self.parse_net)
+            elif option == 'subnet6':
+                instance.set_single_option('subnet6', value, self.parse_net)
             # slave name server notifies:
             elif option == 'notify':
                 instance.notify.append((value, 53))
             elif option == 'suffix':
                 instance.suffix = value
-            elif option == 'subnet4':
-                instance.subnet4 = IP(value.replace(' ', '/')).reverseName()[:-1]
-            elif option == 'subnet6':
-                instance.subnet6 = IP(value.replace(' ', '/')).reverseName()[:-1]
             # SOA entries:
-            elif option in SOA:
+            elif option in ('rname', 'mname', 'refresh', 'retry', 'expire',
+                            'minimum'):
                 if option == 'rname':
                     value = value.replace('@', '.', 1)
                 if getattr(instance, option) is not None:

@@ -52,13 +52,23 @@ openvpn2dns uses a INI-style file configuration but handles and supports multipl
 
 This section is used to set up the zone and e.g. ``SOA`` entry for the zone. The section and all its options must be specified.
 
-- **status_file**: The path to the OpenVPN status file.
 - **rname**: A <domain-name> which specifies the mailbox of the person responsible for this zone.
 - **mname**: The <domain-name> of the name server that was the original or primary source of data for this zone.
 - **refresh**: A 32 bit time interval in seconds before the zone should be refreshed. String suffixes like ``h``, ``d`` are supported.
 - **retry**: A 32 bit time interval that should elapse before a failed refresh should be retried. String suffixes like ``h``, ``d`` are supported.
 - **expire**: A 32 bit time value that specifies the upper limit on the time interval that can elapse before the zone is no longer authoritative. String suffixes like ``h``, ``d`` are supported.
 - **minimum**: The unsigned 32 bit minimum TTL field that should be exported with any RR from this zone. String suffixes like ``h``, ``d`` are supported.
+
+The following options define needed information about the OpenVPN server:
+
+- **status_file**: The path to the OpenVPN status file.
+- **subnet4**: ipv4 subnet of the OpenVPN server. If set openvpn2dns serves also reverse lookups.
+- **subnet6**: ipv6 subnet of the OpenVPN server. If set openvpn2dns serves also reverse lookups.
+
+They can be specify directly or extracted from the OpenVPN server configuration:
+
+- **server_config**: The path to the OpenVPN configuration file.
+  The values for **status_file**, **subnet4** and **subnet6** are extracted.
 
 The following options are optional:
 
@@ -69,7 +79,6 @@ The following options are optional:
 - **add_backward4_entries**: name of one entry section thats records should be added to the backward zone (only IPv4) of this instance.
 - **add_backward6_entries**: name of one entry section thats records should be added to the backward zone (only IPv6) of this instance.
 - **suffix**: zone suffix that should be appended to all certificate common names - needed if the common names are no full-qualified domain names. The shortcut ``@`` references the zone name.
-- **subnet4**: ipv4 subnet of the OpenVPN server. If set openvpn2dns serves also reverse lookups.
 
 
 ### entry section - additional (static) DNS entries

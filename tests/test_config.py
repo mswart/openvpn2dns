@@ -1,7 +1,8 @@
 # -*- coding: UTF-8 -*-
 import pytest
+import os.path
 
-from config import ConfigParser, OpenVpnInstance
+from config import ConfigParser
 from config import ConfigurationError, MissingSectionError, InstanceRedifinitionError
 from config import UnusedOptionWarning
 
@@ -116,6 +117,24 @@ def test_add_instance(cp):
     assert instance.retry == '2h'
     assert instance.expire == '3h'
     assert instance.minimum == '4h'
+
+
+def test_add_instance_with_openvpn_config(cp):
+    cp.data = {'vpn.example.org': [
+        ('refresh', '1h'),
+        ('retry', '2h'),
+        ('rname', 'vpn@example.org'),
+        ('notify', 'hans'),
+        ('mname', 'dns.example.org'),
+        ('expire', '3h'),
+        ('notify', 'foo'),
+        ('server_config', 'tests/samples/basic-server'),
+        ('minimum', '4h'),
+    ]}
+    instance = cp.parse_instance('vpn.example.org')
+    assert instance.status_file == os.path.abspath('tests/samples/empty.ovpn-status-v1')
+    assert instance.subnet4 == '100.51.198.in-addr.arpa'
+    assert instance.subnet6 == '0.0.0.0.4.3.2.1.d.c.b.a.c.d.d.f.ip6.arpa'
 
 
 def test_useless_instance_option(cp, recwarn):

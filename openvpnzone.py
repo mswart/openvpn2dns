@@ -11,30 +11,6 @@ from twisted.python import filepath
 from IPy import IP
 
 
-def extract_status_file_path(config_path):
-    """ Extracts the path to the openvpn status file from a openvpn config.
-
-        :raises EnvironmentError: if the config does not contain a status file
-            entry
-        :return: the absolute path to the status file"""
-    import re
-    status_search = re.compile(r'^\s*status\s+(?P<value>[^#]+)(#.*)?$')
-
-    status_file = None
-
-    with open(config_path, 'r') as conf_file:
-        for conf_line in conf_file:
-            match = status_search.match(conf_line)
-            if match:
-                status_file = match.group('value').strip()
-
-    if not status_file:
-        raise EnvironmentError('You must specify a status entry!')
-
-    import os
-    return os.path.abspath(os.path.join(config_path, '..', status_file))
-
-
 def extract_zones_from_status_file(status_path):
     """ Parses a openvpn status file and extracts the list of connected clients
         and there ip address """
