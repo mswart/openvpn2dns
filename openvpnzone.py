@@ -132,6 +132,11 @@ class OpenVpnAuthorityHandler(list):
         for name, record in instance.records + [soa]:
             records.setdefault(name, []).append(record)
         for client, address in clients.items():
+            if instance.suffix is not None:
+                if instance.suffix == '@':
+                    client += '.' + instance.name
+                else:
+                    client += '.' + instance.suffix
             records.setdefault(client.lower(), []).append(dns.Record_A(address))
         self.authorities[instance.name].setData(soa, records)
 

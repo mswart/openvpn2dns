@@ -45,6 +45,7 @@ class OpenVpnInstance(object):
         self.expire = None
         self.minimum = None
         self.records = []
+        self.suffix = None
 
 
 class ConfigParser(object):
@@ -145,6 +146,8 @@ class ConfigParser(object):
             # slave name server notifies:
             elif option == 'notify':
                 instance.notify.append((value, 53))
+            elif option == 'suffix':
+                instance.suffix = value
             # SOA entries:
             elif option in SOA:
                 if option == 'rname':

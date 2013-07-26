@@ -94,3 +94,67 @@ def test_extra_ns():
         assert rr.payload.__class__ == dns.Record_NS
     assert set(map(lambda rr: rr.payload.name.name, d.result[0])) \
         == set(('dns-a.example.org', 'dns-b.example.org'))
+
+
+def test_suffix():
+    cp = ConfigParser()
+    cp.parse_data({
+        'options': [
+            ('instance', 'vpn.example.org'),
+        ],
+        'vpn.example.org': [
+            ('mname', 'dns.example.org'),
+            ('rname', 'dns.example.org'),
+            ('refresh', '1h'),
+            ('retry', '2h'),
+            ('expire', '3h'),
+            ('minimum', '4h'),
+            ('suffix', 'clients.vpn.example.org'),
+            ('status_file', 'tests/samples/no-fqdn.ovpn-status-v1'),
+        ]
+    })
+    c = ResolverChain(OpenVpnAuthorityHandler(cp))
+    # query one:
+    d = c.query(dns.Query('one.clients.vpn.example.org', dns.A, dns.IN))
+    rr = d.result[0][0]
+    assert rr.name.name == 'one.clients.vpn.example.org'
+    assert rr.payload.__class__ == dns.Record_A
+    assert rr.payload.address == socket.inet_aton('198.51.100.8')
+    # query two:
+    d = c.query(dns.Query('one.two.clients.vpn.example.org', dns.A, dns.IN))
+    rr = d.result[0][0]
+    assert rr.name.name == 'one.two.clients.vpn.example.org'
+    assert rr.payload.__class__ == dns.Record_A
+    assert rr.payload.address == socket.inet_aton('198.51.100.12')
+
+
+def test_suffix_at():
+    cp = ConfigParser()
+    cp.parse_data({
+        'options': [
+            ('instance', 'vpn.example.org'),
+        ],
+        'vpn.example.org': [
+            ('mname', 'dns.example.org'),
+            ('rname', 'dns.example.org'),
+            ('refresh', '1h'),
+            ('retry', '2h'),
+            ('expire', '3h'),
+            ('minimum', '4h'),
+            ('suffix', '@'),
+            ('status_file', 'tests/samples/no-fqdn.ovpn-status-v1'),
+        ]
+    })
+    c = ResolverChain(OpenVpnAuthorityHandler(cp))
+    # query one:
+    d = c.query(dns.Query('one.vpn.example.org', dns.A, dns.IN))
+    rr = d.result[0][0]
+    assert rr.name.name == 'one.vpn.example.org'
+    assert rr.payload.__class__ == dns.Record_A
+    assert rr.payload.address == socket.inet_aton('198.51.100.8')
+    # query two:
+    d = c.query(dns.Query('one.two.vpn.example.org', dns.A, dns.IN))
+    rr = d.result[0][0]
+    assert rr.name.name == 'one.two.vpn.example.org'
+    assert rr.payload.__class__ == dns.Record_A
+    assert rr.payload.address == socket.inet_aton('198.51.100.12')

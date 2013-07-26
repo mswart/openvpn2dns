@@ -54,6 +54,7 @@ The following options are optional:
 
 - **notify**: A DNS name or IP address for other DNS server which working as slaves and should be notified via the DNS notify extension above zone updates. This option can be specify multiple times.
 - **add_entries**: name of one entry section thats records should be added to the zone of this instance.
+- **suffix**: zone suffix that should be appended to all certificate common names - needed if the common names are no full-qualified domain names. The shortcut ``@`` references the zone name.
 
 
 ### entry section - additional (static) DNS entries
