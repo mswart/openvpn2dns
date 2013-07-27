@@ -18,7 +18,7 @@ Installation
 
 openvpn2dns depends on:
 
-- Python 2.6 or 2.7 (but Python 2.6 will may be dropped in the nearer future)
+- Python 2.6 or 2.7 (but Python 2.6 support will likely be dropped in the nearer future)
 - [``twisted`` python module][twisted] - versions >= 10 working
 - [``IPy`` python module][ipy] - at least versions >= 0.73 working
 
