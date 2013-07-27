@@ -2,9 +2,14 @@ language: python
 python:
   - "2.6"
   - "2.7"
+env:
+  - TWISTED_VERSION="" IPY_VERSION=""
+  - TWISTED_VERSION=">=12,<13" IPY_VERSION=">=0.75,<0.76"
+  - TWISTED_VERSION=">=11,<12" IPY_VERSION=">=0.75,<0.76"
+  - TWISTED_VERSION=">=10,<11" IPY_VERSION=">=0.70,<0.71"
 # install dependency:
-before_script:
-  - pip install twisted
-  - pip install IPy
+install:
+  - pip install --use-mirrors Twisted$TWISTED_VERSION
+  - pip install --use-mirrors IPy$IPY_VERSION
 # command to run tests:
 script: "py.test"
