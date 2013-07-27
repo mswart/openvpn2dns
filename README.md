@@ -16,17 +16,31 @@ The server supports zone transfers (``AXFR``) and zone update notifies and can t
 Installation
 ------------
 
-Install the following dependencies e.g. with your package management system:
+openvpn2dns depends on:
 
-- Python 2.7.x (python 3 is not supported by twisted)
-- the twisted Python module (I tested twisted 11.1)
-- the IPy Python module
+- Python 2.6 or 2.7 (but Python 2.6 will may be dropped in the nearer future)
+- [``twisted`` python module][twisted] - versions >= 10 working
+- [``IPy`` python module][ipy] - at least versions >= 0.73 working
 
-Clone this repository to get the openvpn2dns source code:
+[twisted]: https://pypi.python.org/pypi/Twisted/ "Twisted Module in Python Package Index"
+[ipy]: https://pypi.python.org/pypi/IPy/ "IPy Module in Python Package Index"
+
+On most system all dependencies are available via the package manager - look for package names like ``python``/``python2``/``python2.7``, ``python-twisted``/``python-twisted-names`` and ``python-ipy``. The twisted packages contains multiple submodules but openvpn2dns requires only the ``core`` part and the ``names`` submodule. You do not need to install the whole suite.
+
+Currently openvpn2dns is only available via source (but I administrative thinking about building Debian/Ubuntu packages), e.g.:
 
 ```
 git clone git://github.com/mswart/openvpn2dns.git
 ```
+
+If python is installed the needed Python modules can also be installed via the Python Package Index and package manager like ``pip``(or ``easy_install``), e.g.:
+
+```
+pip install -r requirements.txt
+# or
+pip install twisted IPy
+```
+
 
 
 Configuration
@@ -144,15 +158,16 @@ Production Usage
 
 ``openvpn2dns`` is stable and usable for production service.
 
-To handle a higher query count run openvpn2dns as hidden master dns server and use optimized dns server to handle the query load. ``openvpn2dns`` supports zone transfers and the ``notify`` option pushes chances fast to slave servers.
+To handle a higher query count run openvpn2dns as hidden master DNS server and use optimized DNS server to handle the query load. ``openvpn2dns`` supports zone transfers and the ``notify`` option pushes chances fast to slave servers.
 
 The server is written python and security holes are therefore unlikely. But to be sure it is recommended to specify a ``user`` and ``group`` and set ``drop-privileges`` to ``true``: the process drops all privileges after opened the network sockets.
 
-**Warning:** ``openvpn2dns`` does no access control. All clients can query every data from the dns zone or transfer the entire zone. Adjust the firewall to block unwanted connections.
+**Warning:** ``openvpn2dns`` does no access control. All clients can query every data from the DNS zone or transfer the entire zone. Adjust the firewall to block unwanted connections.
 
 The ``scripts`` directory contains a ``upstart`` and a ``init.d`` script. You can copy them. You may want to replace the launch and configuration path inside the scripts.
 
 **Info:** The ``init.d`` passes ``--daemon=yes`` and --pidfile=/var/run/openvpn2dns.pid`` via command line arguments. Values for these options inside the configuration file have no effect.
+
 
 Contributing
 ------------
