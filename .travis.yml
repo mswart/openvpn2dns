@@ -2,6 +2,7 @@ language: python
 python:
   - "2.6"
   - "2.7"
+  - "pypy"
 env:
   - TWISTED_VERSION="" IPY_VERSION=""
   - TWISTED_VERSION=">=12,<13" IPY_VERSION=">=0.75,<0.76"
