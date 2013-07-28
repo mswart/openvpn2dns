@@ -7,6 +7,7 @@ from twisted.names.authority import FileAuthority
 from twisted.names.client import Resolver
 from twisted.internet import inotify
 from twisted.internet import defer
+from twisted.internet.task import deferLater
 from twisted.python import filepath
 from IPy import IP
 
@@ -69,9 +70,9 @@ class InMemoryAuthority(FileAuthority):
             :param dict records: dictionary with record entries for this
                 domain."""
         if soa == self.soa or self.changed(soa, records) is False:
-            if type(soa) is tuple:
-                print('skip unchanged update for zone {0}'.format(soa[0]))
             return False
+        if type(soa) is tuple:
+            print('updated zone {0} to serial {1}'.format(soa[0], soa[1].serial))
         self.soa = soa
         self.records = records
         return True
@@ -214,6 +215,10 @@ class OpenVpnAuthorityHandler(list):
         self.loadInstances()
 
     def status_file_changed(self, ignored, filepath, mask):
+        """ This is a callback for the twisted INotify module to inform about
+            file changes on status files. This methods searches for the
+            associated instances and schedules a loadInstances with a timeout
+            of one second to handle multiple file changes only once."""
         instance = None
         for one_instance in self.config.instances.values():
             if one_instance.status_file == filepath.path:
@@ -222,8 +227,25 @@ class OpenVpnAuthorityHandler(list):
         if instance is None:
             print('unknown status file: {0}'.format(filepath.path))
             return
-        print('{0} changed ({1}), rereading instance {2}'.format(filepath,
-              ','.join(inotify.humanReadableMask(mask)), instance.name))
+        from twisted.internet import reactor
+        instance.version += 1
+        deferLater(reactor, 1, self.status_file_change_done,
+                   instance, instance.version,
+                   ','.join(inotify.humanReadableMask(mask)))
+
+    def status_file_change_done(self, instance, version, reason=None):
+        """ This is a callback for twisted deferLater and scheduled by
+            status_file_changed. If the update id of the instance is the same
+            one as passed as argument the file is not changed within the last
+            second and we reload the instance.
+
+            :param config.OpenVpnInstance instance: instance
+            :param int version: version
+            :param str reason: textual reason for the reload"""
+        if instance.version > version:  # file was modified again
+            return
+        print('rereading instance {2}: {0} changed ({1}), '.format(
+              instance.status_file, reason, instance.name))
         self.loadInstance(instance)
 
     def notify(self, instance, name):

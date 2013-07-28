@@ -97,6 +97,7 @@ class OpenVpnInstance(object, SetSingleValueMixin):
         self.suffix = None
         self.subnet4 = None
         self.subnet6 = None
+        self.version = 0
 
 
 class ConfigParser(object, SetSingleValueMixin):
