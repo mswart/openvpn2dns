@@ -40,7 +40,8 @@ def extract_status_file_path(config_path):
             entry
         :return: the absolute path to the status file"""
     import re
-    status_search = re.compile(r'^\s*(?P<option>(status|server|server-ipv6))\s+(?P<value>[^#]+)(#.*)?$')
+    status_search = re.compile(r'^\s*(?P<option>(status|server|server-ipv6))'
+                               r'\s+(?P<value>[^#]+)(#.*)?$')
 
     status_file = None
     subnet4 = None
@@ -309,6 +310,6 @@ class ConfigParser(object, SetSingleValueMixin):
             parts = value.split(' ')
             record = getattr(dns, 'Record_%s' % parts[0], None)
             if not record:
-                raise NotImplementedError("Record type %r not supported" % type)
+                raise NotImplementedError("Record type %r not supported" % parts[0])
             records.append((entry, record(*parts[1:])))
         return records
