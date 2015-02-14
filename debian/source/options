@@ -1,0 +1,2 @@
+compression = "xz"
+extend-diff-ignore = "(.*\.(cfg|rst)$)|(^(openvpn2dns.sublime-.*|openvpn-status.log|server.conf))"

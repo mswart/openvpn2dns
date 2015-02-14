@@ -1,0 +1,16 @@
+# openvpn2dns - openvpn status file to dns zone converter server
+#
+# A pure python DNS server serving the content of OpenVPN status files.
+
+description     "openvpn2dns server (serving openvpn status files as dns zones)"
+
+start on filesystem or runlevel [2345]
+stop on runlevel [!2345]
+
+respawn
+respawn limit 10 5
+umask 022
+
+console log
+
+exec openvpn2dns /etc/openvpn2dns.ini

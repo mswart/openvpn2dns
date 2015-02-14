@@ -1,0 +1,11 @@
+openvpn2dns (1.1.0-1) unstable; urgency=low
+
+  * Create debian package
+
+ -- Malte Swart <packages@devtation.de>  Sat, 14 Feb 2015 20:24:43 +0100
+
+openvpn2dns (1.0.0-1) unstable; urgency=low
+
+  * Create debian package
+
+ -- Malte Swart <packages@devtation.de>  Sun, 13 Oct 2013 21:47:45 +0200
