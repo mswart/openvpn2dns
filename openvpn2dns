@@ -16,6 +16,7 @@ if os.path.isdir('/usr/share/openvpn2dns'):
 
 from openvpnzone import OpenVpnAuthorityHandler
 from config import ConfigParser, ConfigurationError
+from version import STRING as VERSIONSTRING
 
 
 class OpenVpn2DnsApplication(UnixApplicationRunner):
@@ -85,6 +86,7 @@ parser.add_argument('--log', help='Log destination (file name, "-" for stdout or
                     ' "syslog" for syslog)')
 parser.add_argument('--pid-file', '--pidfile', dest='pidfile', metavar='FILE-NAME',
                     help='Name of the pidfile, recommended for daemon mode')
+parser.add_argument('--version', action='version', version='%(prog)s ' + VERSIONSTRING)
 
 args = parser.parse_args()
 
