@@ -5,29 +5,45 @@ OpenVPN 2 DNS
 
 A pure python DNS server serving the content of OpenVPN status files. It parses
 the status files of the OpenVPN server to extract the connected clients and
-their IP addresses. From theses data OpenVPN2DNS creates DNS zones and serving
-they as DNS server (using Python's twisted module).
+their IP addresses. From theses data OpenVPN2DNS creates DNS zones and serves
+them as DNS server (using Python's twisted module).
 
 Afterwards all connected VPN clients have valid DNS entries.
 
-The server supports zone transfers (``AXFR``) and zone update notifies and can therefore used as master server.
+The server supports zone transfers (``AXFR``) and zone update notifies and can therefore used as master DNS server.
 
 
 Installation
 ------------
 
-openvpn2dns depends on:
+### Debian/Ubuntu
 
-- Python 2.6 or 2.7 (but Python 2.6 support will likely be dropped in the nearer future)
-- [``twisted`` python module][twisted] - versions >= 10 working
+I provide a PPA at [ppa:malte.swart/openvpn2dns][ppa] for various Ubuntu Releases. The packages should also work for Debian.
+
+[ppa]: https://launchpad.net/~malte.swart/+archive/ubuntu/openvpn2dns "Startpage of that PPA at launchpad"
+
+
+### PyPI
+
+`openvpn2dns` is listed on [PyPI][pypi-openvpn2dns]. With a python package manager like `pip` or `easy_install` you should be able to install openvpn2dns and all its dependencies except twisted. Twisted can also be installed via `pip`. But `openvpn2dns` only requires the `names` module from `twisted`, and you are not require to install the whole `twisted` module. On errors see the following manual section for openvpn2dns's requirements and who to get them.
+
+[pypi-openvpn2dns]: https://pypi.python.org/pypi/openvpn2dns "openvpn2dns Application in the Python Package Index"
+
+
+### Manual
+
+`openvpn2dns` depends on:
+
+- Python 2.6 or 2.7 (but Python 2.6 support will likely be dropped in the nearer future); Python 3 is currently not possible, as twisted is only ported Python 3 at the moment.
+- [``Twisted`` python module][twisted] - versions >= 10 working
 - [``IPy`` python module][ipy] - at least versions >= 0.73 working
 
-[twisted]: https://pypi.python.org/pypi/Twisted/ "Twisted Module in Python Package Index"
-[ipy]: https://pypi.python.org/pypi/IPy/ "IPy Module in Python Package Index"
+[twisted]: https://pypi.python.org/pypi/Twisted/ "Twisted Module in the Python Package Index"
+[ipy]: https://pypi.python.org/pypi/IPy/ "IPy Module in the Python Package Index"
 
 On most system all dependencies are available via the package manager - look for package names like ``python``/``python2``/``python2.7``, ``python-twisted``/``python-twisted-names`` and ``python-ipy``. The twisted packages contains multiple submodules but openvpn2dns requires only the ``core`` part and the ``names`` submodule. You do not need to install the whole suite.
 
-Currently openvpn2dns is only available via source (but I administrative thinking about building Debian/Ubuntu packages), e.g.:
+Currently `openvpn2dns` is only available via source (but I administrative thinking about building Debian/Ubuntu packages), e.g.:
 
 ```
 git clone git://github.com/mswart/openvpn2dns.git
@@ -174,11 +190,11 @@ Contributing
 
 1. Fork it
 2. Create your feature branch (`git checkout -b my-new-feature`)
-4. Add specs for your feature
-5. Implement your feature
-6. Commit your changes (`git commit -am 'Add some feature'`)
-7. Push to the branch (`git push origin my-new-feature`)
-8. Create new Pull Request
+3. Add specs for your feature
+4. Implement your feature
+5. Commit your changes (`git commit -am 'Add some feature'`)
+6. Push to the branch (`git push origin my-new-feature`)
+7. Create new Pull Request
 
 
 License
