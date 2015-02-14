@@ -1,4 +1,5 @@
 #!/usr/bin/env python2
+import sys
 import os
 import argparse
 
@@ -8,6 +9,10 @@ from twisted.internet.task import deferLater
 from twisted.names import dns
 from twisted.names import server
 from twisted.scripts._twistd_unix import UnixApplicationRunner
+
+# fix import path if openvpn2dns is installed via package manager
+if os.path.isdir('/usr/share/openvpn2dns'):
+    sys.path.insert(0, '/usr/share/openvpn2dns')
 
 from openvpnzone import OpenVpnAuthorityHandler
 from config import ConfigParser, ConfigurationError

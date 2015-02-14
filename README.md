@@ -140,16 +140,16 @@ add_entries = vpn-server
 Starting
 --------
 
-Launch openvpn2dns with ``launch.py`` and pass the file name of your configuration file:
+Launch openvpn2dns with ``openvpn2dns`` and pass the file name of your configuration file:
 
 ```
-python2 launch.py <configuration file like openvpn2dns.ini>
+python2 openvpn2dns <configuration file like openvpn2dns.ini>
 ```
 
 The most options setting can be specified by command line options. To get a complete list and help run:
 
 ```
-python2 launch.py --help
+python2 openvpn2dns --help
 ```
 
 
@@ -166,7 +166,7 @@ The server is written python and security holes are therefore unlikely. But to b
 
 The ``scripts`` directory contains a ``upstart`` and a ``init.d`` script. You can copy them. You may want to replace the launch and configuration path inside the scripts.
 
-**Info:** The ``init.d`` passes ``--daemon=yes`` and --pidfile=/var/run/openvpn2dns.pid`` via command line arguments. Values for these options inside the configuration file have no effect.
+**Info:** The ``init.d`` passes ``--daemon=yes`` and ``--pidfile=/var/run/openvpn2dns.pid`` via command line arguments. Values for these options inside the configuration file have no effect.
 
 
 Contributing
