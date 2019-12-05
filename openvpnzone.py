@@ -137,7 +137,7 @@ class OpenVpnAuthorityHandler(list):
             notifier.watch(filepath.FilePath(instance.status_file),
                            callbacks=[self.status_file_changed])
         print('Serving {0} zones: {1}'.format(len(self),
-              ', '.join(map(lambda z: z.soa[0], self))))
+              ', '.join([z.soa[0].decode('utf-8') for z in self])))
 
     def loadInstances(self):
         """ (re)load data of all instances"""
@@ -150,16 +150,16 @@ class OpenVpnAuthorityHandler(list):
 
     @staticmethod
     def create_record_base(zone_name, soa, initial_data):
+        records = collections.defaultdict(list)
         if zone_name is None:
-            return {}
-        records = {}
-        records.setdefault(zone_name, []).append(soa)
+            return records
+        records[zone_name.encode('utf-8')].append(soa)
         for name, record in initial_data:
             if name == '@':
                 name = zone_name
             elif not name.endswith('.'):
                 name = name + '.' + zone_name
-            records.setdefault(name, []).append(record)
+            records[name.encode('utf-8')].append(record)
         return records
 
     def build_zone_from_clients(self, instance, clients):
@@ -187,29 +187,29 @@ class OpenVpnAuthorityHandler(list):
                     client += '.' + instance.name
                 else:
                     client += '.' + instance.suffix
-            client = client.lower()
+            client = client.lower().encode('utf-8')
             for address in addresses:
-                reverse = IP(address).reverseName()[:-1]
+                reverse = IP(address).reverseName()[:-1].encode('utf-8')
                 if address.version() == 4:
-                    forward_records.setdefault(client, []) \
+                    forward_records[client] \
                         .append(dns.Record_A(str(address)))
-                    backward4_records.setdefault(reverse, []) \
+                    backward4_records[reverse] \
                         .append(dns.Record_PTR(client))
                 elif address.version() == 6:
-                    forward_records.setdefault(client, []) \
+                    forward_records[client] \
                         .append(dns.Record_AAAA(str(address)))
-                    backward6_records.setdefault(reverse, []) \
+                    backward6_records[reverse] \
                         .append(dns.Record_PTR(client))
         # push data to authorities:
         authority = self.authorities[instance.name]
-        if authority.forward.setData((instance.name, soa), forward_records):
-            self.notify(instance, instance.name)
+        if authority.forward.setData((instance.name.encode('utf-8'), soa), forward_records):
+            self.notify(instance, instance.name.encode('utf-8'))
         if instance.subnet4:
-            if authority.backward4.setData((instance.subnet4, soa), backward4_records):
-                self.notify(instance, instance.subnet4)
+            if authority.backward4.setData((instance.subnet4.encode('utf-8'), soa), backward4_records):
+                self.notify(instance, instance.subnet4.encode('utf-8'))
         if instance.subnet6:
-            if authority.backward6.setData((instance.subnet6, soa), backward6_records):
-                self.notify(instance, instance.subnet6)
+            if authority.backward6.setData((instance.subnet6.encode('utf-8'), soa), backward6_records):
+                self.notify(instance, instance.subnet6.encode('utf-8'))
 
     def handle_signal(self, a, b):
         self.loadInstances()
@@ -259,11 +259,11 @@ class OpenVpnAuthorityHandler(list):
     def start_notify(self):
         self.send_notify = True
         for instance in self.config.instances.values():
-            self.notify(instance, instance.name)
+            self.notify(instance, instance.name.encode('utf-8'))
             if instance.subnet4:
-                self.notify(instance, instance.subnet4)
+                self.notify(instance, instance.subnet4.encode('utf-8'))
             if instance.subnet6:
-                self.notify(instance, instance.subnet6)
+                self.notify(instance, instance.subnet6.encode('utf-8'))
 
 
 class NotifyResolver(Resolver):

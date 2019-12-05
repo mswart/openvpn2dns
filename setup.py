@@ -47,15 +47,16 @@ setup(
 
         'License :: OSI Approved :: MIT License',
 
-        'Programming Language :: Python :: 2 :: Only',
-        'Programming Language :: Python :: 2.6',
-        'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3 :: Only',
+        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
     ],
 
     keywords='openvpn twisted dns',
 
     install_requires=[
-        #'Twisted >= 10', diabled as only twisted-names is needed
+        #'Twisted >= 17', diabled as only twisted-names is needed
         'IPy >= 0.73'
     ],
     py_modules=('config', 'openvpnzone', 'version'),

@@ -1,2 +1,2 @@
-Twisted>=10
+Twisted>=17.1.0
 IPy>=0.70

@@ -30,11 +30,11 @@ def test_soa():
     c = ResolverChain(OpenVpnAuthorityHandler(cp))
     d = c.query(dns.Query('vpn.example.org', dns.SOA, dns.IN))
     rr = d.result[0][0]
-    assert rr.name.name == 'vpn.example.org'
+    assert rr.name.name == b'vpn.example.org'
     payload = rr.payload
     assert payload.__class__ == dns.Record_SOA
-    assert payload.mname.name == 'dns.example.org'
-    assert payload.rname.name == 'dns.example.org'
+    assert payload.mname.name == b'dns.example.org'
+    assert payload.rname.name == b'dns.example.org'
     assert payload.serial == int(os.path.getmtime(
         'tests/samples/empty.ovpn-status-v1'))
     assert payload.refresh == 3600
@@ -62,7 +62,7 @@ def test_a():
     c = ResolverChain(OpenVpnAuthorityHandler(cp))
     d = c.query(dns.Query('one.vpn.example.org', dns.A, dns.IN))
     rr = d.result[0][0]
-    assert rr.name.name == 'one.vpn.example.org'
+    assert rr.name.name == b'one.vpn.example.org'
     payload = rr.payload
     assert payload.__class__ == dns.Record_A
     assert payload.address == socket.inet_aton('198.51.100.8')
@@ -85,9 +85,9 @@ def test_aaaa():
         ]
     })
     c = ResolverChain(OpenVpnAuthorityHandler(cp))
-    d = c.query(dns.Query('one.vpn.example.org', dns.AAAA, dns.IN))
+    d = c.query(dns.Query(b'one.vpn.example.org', dns.AAAA, dns.IN))
     rr = d.result[0][0]
-    assert rr.name.name == 'one.vpn.example.org'
+    assert rr.name.name == b'one.vpn.example.org'
     payload = rr.payload
     assert payload.__class__ == dns.Record_AAAA
     assert IP(socket.inet_ntop(socket.AF_INET6, payload.address)) \
@@ -112,13 +112,13 @@ def test_ptr():
         ]
     })
     c = ResolverChain(OpenVpnAuthorityHandler(cp))
-    reverse = '8.100.51.198.in-addr.arpa'
+    reverse = b'8.100.51.198.in-addr.arpa'
     d = c.query(dns.Query(reverse, dns.PTR, dns.IN))
     rr = d.result[0][0]
     assert rr.name.name == reverse
     payload = rr.payload
     assert payload.__class__ == dns.Record_PTR
-    assert payload.name.name == 'one.vpn.example.org'
+    assert payload.name.name == b'one.vpn.example.org'
 
 
 def test_extra_ns():
@@ -145,10 +145,10 @@ def test_extra_ns():
     c = ResolverChain(OpenVpnAuthorityHandler(cp))
     d = c.query(dns.Query('vpn.example.org', dns.NS, dns.IN))
     for rr in d.result[0]:
-        assert rr.name.name == 'vpn.example.org'
+        assert rr.name.name == b'vpn.example.org'
         assert rr.payload.__class__ == dns.Record_NS
-    assert set(map(lambda rr: rr.payload.name.name, d.result[0])) \
-        == set(('dns-a.example.org', 'dns-b.example.org'))
+    assert {rr.payload.name.name for rr in d.result[0]} \
+        == {b'dns-a.example.org', b'dns-b.example.org'}
 
 
 def test_extra_ns_backwards4():
@@ -176,10 +176,10 @@ def test_extra_ns_backwards4():
     c = ResolverChain(OpenVpnAuthorityHandler(cp))
     d = c.query(dns.Query('100.51.198.in-addr.arpa', dns.NS, dns.IN))
     for rr in d.result[0]:
-        assert rr.name.name == '100.51.198.in-addr.arpa'
+        assert rr.name.name == b'100.51.198.in-addr.arpa'
         assert rr.payload.__class__ == dns.Record_NS
-    assert set(map(lambda rr: rr.payload.name.name, d.result[0])) \
-        == set(('dns-a.example.org', 'dns-b.example.org'))
+    assert {rr.payload.name.name for rr in d.result[0]} \
+        == {b'dns-a.example.org', b'dns-b.example.org'}
 
 
 def test_extra_entries():
@@ -216,7 +216,7 @@ def test_extra_entries():
     c = ResolverChain(dd)
 
     def test(name, result):
-        d = c.query(dns.Query(name, dns.A, dns.IN)).result
+        d = c.query(dns.Query(name.encode('utf-8'), dns.A, dns.IN)).result
 
         if not result:
             assert d.__class__ is Failure
@@ -272,13 +272,13 @@ def test_suffix():
     # query one:
     d = c.query(dns.Query('one.clients.vpn.example.org', dns.A, dns.IN))
     rr = d.result[0][0]
-    assert rr.name.name == 'one.clients.vpn.example.org'
+    assert rr.name.name == b'one.clients.vpn.example.org'
     assert rr.payload.__class__ == dns.Record_A
     assert rr.payload.address == socket.inet_aton('198.51.100.8')
     # query two:
     d = c.query(dns.Query('one.two.clients.vpn.example.org', dns.A, dns.IN))
     rr = d.result[0][0]
-    assert rr.name.name == 'one.two.clients.vpn.example.org'
+    assert rr.name.name == b'one.two.clients.vpn.example.org'
     assert rr.payload.__class__ == dns.Record_A
     assert rr.payload.address == socket.inet_aton('198.51.100.12')
 
@@ -304,12 +304,12 @@ def test_suffix_at():
     # query one:
     d = c.query(dns.Query('one.vpn.example.org', dns.A, dns.IN))
     rr = d.result[0][0]
-    assert rr.name.name == 'one.vpn.example.org'
+    assert rr.name.name == b'one.vpn.example.org'
     assert rr.payload.__class__ == dns.Record_A
     assert rr.payload.address == socket.inet_aton('198.51.100.8')
     # query two:
     d = c.query(dns.Query('one.two.vpn.example.org', dns.A, dns.IN))
     rr = d.result[0][0]
-    assert rr.name.name == 'one.two.vpn.example.org'
+    assert rr.name.name == b'one.two.vpn.example.org'
     assert rr.payload.__class__ == dns.Record_A
     assert rr.payload.address == socket.inet_aton('198.51.100.12')

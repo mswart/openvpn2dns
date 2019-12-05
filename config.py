@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 import os.path
 import warnings
 import pwd
@@ -77,11 +75,11 @@ class SetSingleValueMixin:
             try:
                 value = convert(value)
             except Exception as e:
-                raise ConfigurationError(e.message)
+                raise ConfigurationError(e)
         setattr(self, name, value)
 
 
-class OpenVpnInstance(object, SetSingleValueMixin):
+class OpenVpnInstance(SetSingleValueMixin):
     def __init__(self, name):
         self.name = name
         self.status_file = None
@@ -101,7 +99,7 @@ class OpenVpnInstance(object, SetSingleValueMixin):
         self.version = 0
 
 
-class ConfigParser(object, SetSingleValueMixin):
+class ConfigParser(SetSingleValueMixin):
     """ Parser and data storage for configuration information.
         The file format uses the INI syntax but with multiple use of option
         names per section therefore the config module is not usable.
@@ -168,7 +166,7 @@ class ConfigParser(object, SetSingleValueMixin):
             return True
         if value.lower() in ['false', 'f', 'no', 'n', '0']:
             return False
-        raise ValueError('Could not parse boolean value')
+        raise ValueError(f'Could not parse boolean value: "{value!r}"')
 
     @staticmethod
     def parse_filename(value):
@@ -311,5 +309,5 @@ class ConfigParser(object, SetSingleValueMixin):
             record = getattr(dns, 'Record_%s' % parts[0], None)
             if not record:
                 raise NotImplementedError("Record type %r not supported" % parts[0])
-            records.append((entry, record(*parts[1:])))
+            records.append((entry, record(*[s.encode('utf-8') for s in parts[1:]])))
         return records

@@ -34,14 +34,14 @@ I provide a PPA at [ppa:malte.swart/openvpn2dns][ppa] for various Ubuntu Release
 
 `openvpn2dns` depends on:
 
-- Python 2.6 or 2.7 (but Python 2.6 support will likely be dropped in the nearer future); Python 3 is currently not possible, as twisted is only ported Python 3 at the moment.
-- [``Twisted`` python module][twisted] - versions >= 10 working
+- Python >= 3.6
+- [``Twisted`` python module][twisted] - versions >= 17.1 working
 - [``IPy`` python module][ipy] - at least versions >= 0.73 working
 
 [twisted]: https://pypi.python.org/pypi/Twisted/ "Twisted Module in the Python Package Index"
 [ipy]: https://pypi.python.org/pypi/IPy/ "IPy Module in the Python Package Index"
 
-On most system all dependencies are available via the package manager - look for package names like ``python``/``python2``/``python2.7``, ``python-twisted``/``python-twisted-names`` and ``python-ipy``. The twisted packages contains multiple submodules but openvpn2dns requires only the ``core`` part and the ``names`` submodule. You do not need to install the whole suite.
+On most system all dependencies are available via the package manager - look for package names like ``python``/``python3``, ``python3-twisted`` and ``python3-ipy``. The twisted packages contains multiple submodules but openvpn2dns requires only the ``core`` part and the ``names`` submodule. You do not need to install the whole suite.
 
 Currently `openvpn2dns` is only available via source (but I administrative thinking about building Debian/Ubuntu packages), e.g.:
 
@@ -159,13 +159,13 @@ Starting
 Launch openvpn2dns with ``openvpn2dns`` and pass the file name of your configuration file:
 
 ```
-python2 openvpn2dns <configuration file like openvpn2dns.ini>
+python3 openvpn2dns <configuration file like openvpn2dns.ini>
 ```
 
 The most options setting can be specified by command line options. To get a complete list and help run:
 
 ```
-python2 openvpn2dns --help
+python3 openvpn2dns --help
 ```
 
 
@@ -202,4 +202,4 @@ License
 
 MIT License
 
-Copyright (c) 2013 Malte Swart. MIT license, see LICENSE for more details.
+Copyright (c) 2013-2019 Malte Swart. MIT license, see LICENSE for more details.
